@@ -54,6 +54,27 @@ class TenantSettingsTest {
     }
 
     @Test
+    void aLeadSheetRoundTripsAndIsOffUntilItHasAnAddress() {
+        var sheet = new TenantSettings.LeadSheet("https://script.google.com/macros/s/abc/exec", "s3cret");
+        var settings = new TenantSettings("WWV", null, null, null, sheet);
+        var back = converter.convertToEntityAttribute(converter.convertToDatabaseColumn(settings));
+        assertThat(back.leadSheet()).isEqualTo(sheet);
+        assertThat(back.leadSheet().enabled()).isTrue();
+        assertThat(new TenantSettings.LeadSheet(null, "s").enabled()).isFalse();
+        assertThat(new TenantSettings.LeadSheet("  ", "s").enabled()).isFalse();
+        assertThat(TenantSettings.defaults().leadSheet()).isNull();
+        // A tenant saved before lead sheets existed has no leadSheet key.
+        assertThat(converter.convertToEntityAttribute("{\"leadNumberPrefix\":\"WWV\"}").leadSheet()).isNull();
+    }
+
+    @Test
+    void aLeadSheetNeverPrintsItsSecret() {
+        assertThat(new TenantSettings.LeadSheet("https://x.test/exec", "s3cret").toString())
+                .doesNotContain("s3cret").contains("secret=***");
+        assertThat(new TenantSettings.LeadSheet("https://x.test/exec", null).toString()).contains("secret=none");
+    }
+
+    @Test
     void missingOrOldJsonReadsAsDefaults() {
         assertThat(converter.convertToEntityAttribute(null)).isEqualTo(TenantSettings.defaults());
         assertThat(converter.convertToEntityAttribute(" ")).isEqualTo(TenantSettings.defaults());
