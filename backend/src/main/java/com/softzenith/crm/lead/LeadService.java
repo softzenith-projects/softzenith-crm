@@ -87,7 +87,8 @@ public class LeadService {
             var bumped = leads.findById(lead.getId()).orElseThrow();
             events.publishEvent(new LeadRepeatEnquiry(UUID.randomUUID(), tenant.getId(), bumped.getId(), bumped.getLeadNumber(),
                     bumped.getFullName(), bumped.getPhoneE164(), bumped.getEmail(), bumped.getAssignedTo(),
-                    bumped.getEnquiryCount(), d.sourceType(), message));
+                    bumped.getEnquiryCount(), d.sourceType(), message, Text.singleLine(d.serviceInterest()),
+                    Text.singleLine(d.preferredCountry()), sourceDetail, Instant.now()));
             log.info("Repeat enquiry #{} on lead {} via {} (phone {})", bumped.getEnquiryCount(), bumped.getLeadNumber(),
                     d.sourceType(), Mask.phone(phone));
             return new IntakeResult(bumped, false);
@@ -98,7 +99,7 @@ public class LeadService {
         activities.save(new LeadActivity(lead.getId(), LeadActivity.Type.CREATED, null, d.sourceType().name(), null));
         events.publishEvent(new LeadCreated(UUID.randomUUID(), tenant.getId(), lead.getId(), number, lead.getFullName(), phone,
                 lead.getEmail(), lead.getServiceInterest(), lead.getPreferredCountry(), branchName,
-                lead.getSourceType(), lead.getMessage()));
+                lead.getSourceType(), lead.getMessage(), lead.getSourceDetail(), lead.getCreatedAt()));
         log.info("Lead {} created via {}{} (phone {})", number, d.sourceType(),
                 sourceDetail == null ? "" : " [" + sourceDetail + "]", Mask.phone(phone));
         return new IntakeResult(lead, true);
