@@ -10,6 +10,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 
+import java.time.Instant;
 import java.time.LocalDate;
 
 /** A staff member of a tenant, with basic employee record fields. Signs in with their phone number. */
@@ -45,6 +46,12 @@ public class AppUser extends TenantScopedEntity {
     private String designation;
 
     private LocalDate joinedOn;
+
+    /** bcrypt hash of the sign-in code the tenant's Admin set (see {@link SigninCodes}); null when none. */
+    private String signinCodeHash;
+
+    /** When the code was last set: sessions opened with an older code end (see {@code StaffDirectory}). */
+    private Instant signinCodeSetAt;
 
     protected AppUser() {
     }
@@ -109,6 +116,23 @@ public class AppUser extends TenantScopedEntity {
         }
     }
 
+    /** @param hash bcrypt hash of a code that passed {@link SigninCodes#problem} */
+    void setSigninCode(String hash, Instant now) {
+        this.signinCodeHash = hash;
+        this.signinCodeSetAt = now;
+    }
+
+    /** A correct sign-in code proves the phone like an OTP does: an invited member becomes active. */
+    void signedInWithCode() {
+        if (status == UserStatus.INVITED) {
+            status = UserStatus.ACTIVE;
+        }
+    }
+
+    public boolean hasSigninCode() {
+        return signinCodeHash != null;
+    }
+
     public boolean isActive() {
         return status == UserStatus.ACTIVE;
     }
@@ -135,4 +159,6 @@ public class AppUser extends TenantScopedEntity {
     public String getEmployeeCode() { return employeeCode; }
     public String getDesignation() { return designation; }
     public LocalDate getJoinedOn() { return joinedOn; }
+    String getSigninCodeHash() { return signinCodeHash; }
+    public Instant getSigninCodeSetAt() { return signinCodeSetAt; }
 }

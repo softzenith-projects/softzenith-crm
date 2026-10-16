@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState, type ChangeEvent, type ReactNode } from "react";
-import { AlertTriangle, CheckCircle2, Download, Plus, Rocket, Trash2, Upload } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Download, KeyRound, Plus, Rocket, Trash2, Upload } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -12,15 +12,16 @@ import { ErrorText, Field } from "@/components/common";
 import { errorMessage, type Schemas } from "@/lib/api";
 import {
   FEATURES, REVIEW_STEP, ROLES, STEPS, emptyBlueprint, forSending, lines, parseStaffSheet, slugify, stepOfField,
-  type Blueprint, type BlueprintStaff,
+  withoutSigninCodes, type Blueprint, type BlueprintStaff,
 } from "@/lib/blueprint";
+import { generateSigninCode } from "@/lib/signin-code";
 import { platformApi } from "@/lib/platform";
 import { cn } from "@/lib/utils";
 
 type Plan = Schemas["OnboardingPlan"];
 type Onboarded = Schemas["Onboarded"];
 
-/** Unsaved work survives a reload or an accidental close (per browser). */
+/** Unsaved work survives a reload or an accidental close (per browser); sign-in codes are never kept in it. */
 const DRAFT = "crm.platform.onboarding-draft";
 
 function loadDraft(): Blueprint {
@@ -48,7 +49,7 @@ export function OnboardingWizard() {
 
   useEffect(() => {
     try {
-      localStorage.setItem(DRAFT, JSON.stringify(bp));
+      localStorage.setItem(DRAFT, JSON.stringify(withoutSigninCodes(bp)));
     } catch {
       // Storage unavailable (private mode): the form still works, the draft is just not kept.
     }
@@ -98,7 +99,7 @@ export function OnboardingWizard() {
   if (done) return <LiveNow result={done} />;
 
   const saveFile = () => {
-    const url = URL.createObjectURL(new Blob([JSON.stringify(bp, null, 2)], { type: "application/json" }));
+    const url = URL.createObjectURL(new Blob([JSON.stringify(withoutSigninCodes(bp), null, 2)], { type: "application/json" }));
     const a = Object.assign(document.createElement("a"), { href: url, download: `${business.slug || "new-business"}.blueprint.json` });
     a.click();
     URL.revokeObjectURL(url);
@@ -248,8 +249,10 @@ function StaffStep({ bp, patch }: { bp: Blueprint; patch: (c: Partial<Blueprint>
   return (
     <div className="space-y-4">
       <p className="text-sm text-muted-foreground">
-        Everyone signs in with their mobile number. They are invited, not messaged: they become active on their first sign-in.
-        Add at least one Admin; Admins and Receptionists with an email get new-enquiry alerts.
+        Everyone signs in with their mobile number and a sign-in code. They are invited, not messaged: they become active
+        on their first sign-in. Add at least one Admin and give them a code (they set everyone else&apos;s after going live);
+        hand codes over privately. Codes are not kept in the draft or the saved file. Admins and Receptionists with an
+        email get new-enquiry alerts.
       </p>
       <Rows empty="No staff yet." addLabel="Add person"
             onAdd={() => patch({ staff: [...staff, { fullName: "", phone: "", email: "", role: staff.length === 0 ? "Admin" : "Counsellor", branch: "" }] })}>
@@ -257,7 +260,7 @@ function StaffStep({ bp, patch }: { bp: Blueprint; patch: (c: Partial<Blueprint>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="text-left text-xs text-muted-foreground">
-                <tr><th className="p-1">Name</th><th className="p-1">Mobile</th><th className="p-1">Email</th><th className="p-1">Role</th><th className="p-1">Branch</th><th className="p-1">Designation</th><th /></tr>
+                <tr><th className="p-1">Name</th><th className="p-1">Mobile</th><th className="p-1">Email</th><th className="p-1">Role</th><th className="p-1">Branch</th><th className="p-1">Designation</th><th className="p-1">Sign-in code</th><th /></tr>
               </thead>
               <tbody>
                 {staff.map((s, i) => (
@@ -279,6 +282,15 @@ function StaffStep({ bp, patch }: { bp: Blueprint; patch: (c: Partial<Blueprint>
                       </NativeSelect>
                     </td>
                     <td className="p-1"><Input aria-label={`Row ${i + 1} designation`} value={s.designation ?? ""} onChange={(e) => set(i, { designation: e.target.value })} /></td>
+                    <td className="p-1">
+                      <div className="flex gap-1">
+                        <Input aria-label={`Row ${i + 1} sign-in code`} inputMode="numeric" autoComplete="off" maxLength={8}
+                               className="w-28 font-mono" value={s.signinCode ?? ""}
+                               onChange={(e) => set(i, { signinCode: e.target.value.replace(/\D/g, "") })} />
+                        <Button type="button" variant="ghost" size="icon" aria-label={`Generate row ${i + 1} sign-in code`}
+                                onClick={() => set(i, { signinCode: generateSigninCode() })}><KeyRound /></Button>
+                      </div>
+                    </td>
                     <td className="p-1">
                       <Button type="button" variant="ghost" size="icon" aria-label={`Remove row ${i + 1}`}
                               onClick={() => patch({ staff: staff.filter((_, j) => j !== i) })}><Trash2 /></Button>
@@ -355,7 +367,11 @@ function Review({ plan, upToDate, checking, onCheck, onGoLive, onFix }: {
           <Item label="Features">{s.features?.join(", ")}</Item>
           <Item label={`Branches (${s.branches?.length ?? 0})`}>{s.branches?.join(", ") || "None"}</Item>
           <Item label={`Staff invited (${s.staff?.length ?? 0})`}>
-            <ul>{s.staff?.map((p) => <li key={p.phone}>{p.fullName} · {p.role}{p.branch ? ` · ${p.branch}` : ""} · {p.phone}</li>)}</ul>
+            <ul>{s.staff?.map((p) => (
+              <li key={p.phone}>
+                {p.fullName} · {p.role}{p.branch ? ` · ${p.branch}` : ""} · {p.phone} · {p.hasSigninCode ? "sign-in code set" : "no sign-in code"}
+              </li>
+            ))}</ul>
           </Item>
         </dl>
       )}
@@ -377,7 +393,7 @@ function LiveNow({ result }: { result: Onboarded }) {
         <ol className="mx-auto max-w-xl list-decimal space-y-2 pl-5 text-sm">
           <li>Their enquiry form: <a href={form} target="_blank" rel="noreferrer" className="text-primary underline">{form}</a></li>
           <li>Their website: set <code>NEXT_PUBLIC_CRM_TENANT={result.slug}</code> so its forms send enquiries here.</li>
-          <li>Staff sign in at <code>/login</code> with their mobile number; the first sign-in activates them.</li>
+          <li>Staff sign in at <code>/login</code> with their mobile number and sign-in code; the first sign-in activates them.</li>
           <li>Admins add more staff and branches themselves under Staff and Branches.</li>
         </ol>
         <div className="flex justify-center"><Link href="/platform" className={buttonVariants({ variant: "outline" })}>Back to businesses</Link></div>

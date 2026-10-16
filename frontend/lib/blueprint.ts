@@ -80,6 +80,12 @@ export function forSending(bp: Blueprint): Blueprint {
     },
     branches: (bp.branches ?? []).map((b) => ({ name: b.name, city: blank(b.city) })),
     staff: (bp.staff ?? []).map((s) => ({ ...s, email: blank(s.email), branch: blank(s.branch),
-      designation: blank(s.designation), employeeCode: blank(s.employeeCode), joinedOn: blank(s.joinedOn) })),
+      designation: blank(s.designation), employeeCode: blank(s.employeeCode), joinedOn: blank(s.joinedOn),
+      signinCode: blank(s.signinCode) })),
   };
+}
+
+/** The blueprint without sign-in codes: what may be kept in the browser's draft or saved to a file. */
+export function withoutSigninCodes(bp: Blueprint): Blueprint {
+  return { ...bp, staff: bp.staff?.map((s) => ({ ...s, signinCode: undefined })) };
 }
