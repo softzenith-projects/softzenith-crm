@@ -61,7 +61,7 @@ spec: menu items appear only when their module exists (no fake counts).
 | DOC1 | Document checklist per service (tenant config); `DocumentStorage` (local / Supabase Storage) | todo |
 | DOC2 | Upload by student or counsellor, verify/reject by staff, events into the feed | todo |
 | AUTH2 | Email sign-in via Supabase (email OTP / magic link; SES as its SMTP); link invites by verified email | todo (needs Supabase project + SES) |
-| DEPLOY1 | Docker images (API, staff app), `docker-compose.yml` (Postgres, Caddy HTTPS), **staging + live env files** (staging: Mailpit as SMTP behind a password, Turnstile test keys), nightly `pg_dump` to S3 + tested restore. Plan: `docs/go-live.md` | todo (**next**, needs owner approval of the plan, go-live step 1) |
+| DEPLOY1 | Docker images (API, staff app), `docker-compose.yml` (Postgres, Caddy HTTPS), **staging + live env files** (staging: Mailpit as SMTP behind a password, Turnstile test keys), nightly `pg_dump` to S3 + tested restore. Plan: `docs/go-live.md` | staging done (16 Oct): `deploy/` (compose: Postgres 18, API, staff app as Next standalone, Mailpit, Caddy), `backend/Dockerfile`, `frontend/Dockerfile`; copy of backups off the server todo |
 | DEPLOY2 | Staging (Lightsail 2 GB) then live (Lightsail 4 GB), Mumbai; `aimdesk[-staging][-api].softzenithlabs.com`; smoke check list in `docs/go-live.md` | todo (needs AWS account + DNS) |
 | MAIL1 | Amazon SES: domain verification (SPF/DKIM/DMARC), production access | todo (needs AWS + DNS) |
 | GO0 | Western World live on the **staging** server today (owner, 16 Oct): website + form → staging, Google Workspace SMTP, WhatsApp (Meta Cloud API templates) to student + Admin, Meta lead ads webhook. Beginner runbook: `docs/go-live.md` Part A. Code still needed: C0 commit, C1 packaging, C5 privacy page + consent line, C2 real WhatsApp sender, C3 Admin WhatsApp alert, C4 Meta lead ads webhook | plan written; code todo |
@@ -92,6 +92,8 @@ spec: menu items appear only when their module exists (no fake counts).
 - First milestone plan: `docs/staging-deploy.md` (page https://claude.ai/artifact/3cfmzGG6jwtWYwMKeQcMhU): website form → staging DB → Admin sees it. Staging sign-in = existing mobile + code; Mailpit test inbox; no Turnstile/WhatsApp/Meta yet.
 - Email sign-in (AUTH2) proposed as our own email one-time code over Google Workspace SMTP, no Supabase (not yet approved).
 - Onboarding blueprint `docs/onboarding/westernworld.blueprint.json` still has slug `westernworld` and no staff: the wizard step changes it to `westernworldvisaservices` and adds the owner as Admin.
+
+- DEPLOY1 (staging): `deploy/docker-compose.yml`, `Caddyfile` (API address exposes only `/api/v1/public/*` and `/actuator/health`; staff API only via the staff app), `setup-env.sh` (secrets generated on the server), `deploy.sh` (builds API then web, one at a time for 2 GB), `backup.sh` (nightly `pg_dump -Fc`, 7 days), `deploy/README.md`. `frontend/next.config.ts`: `output: standalone` only when `NEXT_OUTPUT=standalone` (Docker), so dev/e2e are unchanged. `.gitattributes` keeps scripts LF. Verified locally: frontend `tsc` only; the images are first built on the server.
 
 ### Open for the owner
 - Domain confirmed: softzenithlabs.com (owner, 16 Oct). Still open: Western World email usage and old-hosting login; WhatsApp sender number; approve C0–C5.

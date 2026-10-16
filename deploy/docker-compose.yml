@@ -1,0 +1,92 @@
+# AimDesk on one server: database, API, staff app, test inbox, and Caddy (HTTPS) in front.
+# Settings and secrets come from deploy/.env (created by deploy/setup-env.sh, never committed).
+# Start / update: deploy/deploy.sh. Operations: deploy/README.md.
+name: aimdesk
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  db:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: crm
+      POSTGRES_USER: ${DB_USER:-crm_app}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD missing in deploy/.env}
+    # Sized for a 2 GB server shared with the API and the staff app.
+    command: ["postgres", "-c", "shared_buffers=128MB", "-c", "max_connections=40"]
+    volumes:
+      - pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d crm"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+    logging: *logging
+
+  api:
+    build: ../backend
+    image: aimdesk-api
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      JAVA_TOOL_OPTIONS: ${API_JAVA_OPTS:--Xms256m -Xmx512m -XX:MaxMetaspaceSize=200m -XX:+UseSerialGC}
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - api_logs:/app/logs
+    logging: *logging
+
+  web:
+    build:
+      context: ../frontend
+      args:
+        CRM_API_URL: http://api:8081
+    image: aimdesk-web
+    restart: unless-stopped
+    environment:
+      CRM_API_URL: http://api:8081
+    depends_on:
+      - api
+    logging: *logging
+
+  # Test inbox: every email the API sends lands here (staging only; live uses real SMTP).
+  mailpit:
+    image: axllent/mailpit:latest
+    restart: unless-stopped
+    environment:
+      MP_UI_AUTH: "softzenith:${MAILPIT_PASSWORD:?MAILPIT_PASSWORD missing in deploy/.env}"
+      MP_MAX_MESSAGES: "2000"
+    logging: *logging
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      CRM_DOMAIN: ${CRM_DOMAIN:?CRM_DOMAIN missing in deploy/.env}
+      CRM_API_DOMAIN: ${CRM_API_DOMAIN:?CRM_API_DOMAIN missing in deploy/.env}
+      MAIL_DOMAIN: ${MAIL_DOMAIN:?MAIL_DOMAIN missing in deploy/.env}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - web
+      - api
+      - mailpit
+    logging: *logging
+
+volumes:
+  pgdata:
+  api_logs:
+  caddy_data:
+  caddy_config:

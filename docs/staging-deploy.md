@@ -54,8 +54,8 @@ flowchart TB
 | 3 | Server: EC2 `t3.small`, Ubuntu 24.04, key pair `softzenith-staging` | You | Done |
 | 4 | Security group: 80 + 443 from anywhere, 22 from My IP; Elastic IP `54.253.207.84` | You | Done (80/443 verified in step 8) |
 | 5 | DNS at Hostinger: A `crm-staging`, `crm-staging-api`, `crm-staging-mail` → `54.253.207.84` | You | Done, resolving |
-| 6 | Packaging code (C0, C1 below) | Claude | Waiting for approval |
-| 7 | Access: key at `C:\Users\naman\.ssh\softzenith-staging.pem` (locked to your user), SSH as `ubuntu` works; deploy key on GitHub | You + Claude | Key done; deploy key after step 6 |
+| 6 | Packaging code (C0, C1 below) | Claude | Done: branch `feat/staging-deploy` |
+| 7 | Access: key at `C:\Users\naman\.ssh\softzenith-staging.pem` (locked to your user), SSH as `ubuntu` works | You + Claude | Done. No deploy key needed: the repo is public |
 | 8 | Install and start | Claude | |
 | 9 | Set up Western World | You | |
 | 10 | Connect the Vercel website | You | |
@@ -71,16 +71,13 @@ Nginx inactive.
 | C0 | Commit the finished, uncommitted work (sign-in codes, visitor address) on a branch, merge into `develop`, push. You approve first |
 | C1 | `deploy/` folder: Dockerfiles for the API (Java 21, heap capped so everything fits in 2 GB) and the staff app; `docker-compose.yml` with PostgreSQL, API, staff app, Caddy (automatic HTTPS) and Mailpit; `Caddyfile` for the three `crm-staging` addresses (password on the inbox); `staging.env.example`; nightly database dump kept 7 days; one-command deploy script. Pushed to `develop` |
 
-### 7. Deploy key (you, 2 min, after step 6)
-
-Claude creates a read-only key on the server and shows you its **public** half (safe to share). GitHub → the CRM repo →
-**Settings → Deploy keys → Add deploy key** → paste → leave **Allow write access** off → **Add key**.
-
 ### 8. Install and start (Claude, 30–45 min; you approve each command)
 
-1. Download the code (`develop`) to `/opt/aimdesk`; turn on automatic security updates.
-2. Write `/opt/aimdesk/.env` (readable only by the admin user). Secrets are generated **on the server**, so they never
-   pass through chat:
+Everything is in the repo's `deploy/` folder (operations guide: `deploy/README.md`).
+
+1. Download the code to `/opt/aimdesk` (the repo is public, so no key is needed).
+2. `deploy/setup-env.sh` writes `/opt/aimdesk/deploy/.env` (readable only by the admin user) from
+   `deploy/staging.env.example`. Secrets are generated **on the server**, so they never pass through chat:
 
    | Setting | Value |
    |---|---|
@@ -93,20 +90,21 @@ Claude creates a read-only key on the server and shows you its **public** half (
    | `CRM_PLATFORM_ADMIN_USERNAME` / `_PASSWORD` | `softzenith` / random (console login; removed after the first sign-in) |
    | `TURNSTILE_SECRET`, `CRM_TRUSTED_PROXY_SECRET` | empty for now |
 
-3. `docker compose up -d --build`. Caddy gets the HTTPS certificates by itself.
+3. `deploy/deploy.sh feat/staging-deploy` (later `develop`): builds the API and the staff app one after the other
+   (10–20 minutes the first time on 2 GB), then starts everything. Caddy gets the HTTPS certificates by itself.
 4. **Checks:** `https://crm-staging-api.softzenithlabs.com/actuator/health` shows `{"status":"UP"}`;
    `https://crm-staging.softzenithlabs.com/login` opens; `https://crm-staging-mail.softzenithlabs.com` asks for a
    password.
 5. **You** read the console and inbox passwords yourself and save them in your password manager. In PowerShell:
 
    ```powershell
-   ssh -i C:\Users\naman\.ssh\softzenith-staging.pem ubuntu@54.253.207.84 "sudo grep -E 'CRM_PLATFORM_ADMIN|MAILPIT_PASSWORD' /opt/aimdesk/.env"
+   ssh -i C:\Users\naman\.ssh\softzenith-staging.pem ubuntu@54.253.207.84 "grep -E 'CRM_PLATFORM_ADMIN|MAILPIT_PASSWORD' /opt/aimdesk/deploy/.env"
    ```
 
 ### 9. Set up Western World (you, 15 min)
 
 1. `https://crm-staging.softzenithlabs.com/platform` → sign in with the console login.
-2. Claude removes the two `CRM_PLATFORM_ADMIN_*` lines and restarts (the account stays).
+2. Claude removes the two `CRM_PLATFORM_ADMIN_*` lines from `deploy/.env` and restarts the API (the account stays).
 3. **Onboard a business → Load file** → `docs/onboarding/westernworld.blueprint.json`.
 4. Change the **web address (slug)** from `westernworld` to **`westernworldvisaservices`** (must match the website;
    can't be changed later).
