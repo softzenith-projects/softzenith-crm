@@ -1,4 +1,4 @@
-# Handoff — 2026-10-05 (MOVE1: website moved to its own repo)
+# Handoff — 2026-10-16 (GO0 plan: Western World live on staging today; earlier AUTH1, TRUST1)
 
 Project rules, stack, conventions and settled decisions: **`CLAUDE.md`**. This file is the current state.
 
@@ -27,6 +27,8 @@ Project rules, stack, conventions and settled decisions: **`CLAUDE.md`**. This f
 | WW1 | Western World is the first tenant (owner, 30 Sep); EaseMyViz removed everywhere (future B2B business of Western World); dev seed → neutral "Demo Visas" (`demo`) | done |
 | PA1 | SoftZenith platform console: admin login (username+password), own security chain, audit; onboarding wizard (preview → go live) | done (v1: create only) |
 | PA2 | Console: edit a live business (settings, feature gates, suspend), change admin password, more admins, TOTP | todo |
+| AUTH1 | Staff sign-in: mobile + personal sign-in code set by the tenant Admin (owner, 8 Oct; no SMS); V9; codes at onboarding | done (this session) |
+| TRUST1 | Visitor address behind a tenant website on another host (Vercel): shared-secret `X-Crm-Client-Ip` | done (this session; website `proxy.ts` uncommitted in its repo) |
 | GH1 | Publish to GitHub (`codewithnmn/softzenith-crm`), `main` + `develop` branches, README rewrite for new developers | done (README first-time-setup section pending, see session) |
 
 ## Roadmap (owner-approved 25 Sep 2026, from the role-dashboard mockups)
@@ -58,9 +60,121 @@ spec: menu items appear only when their module exists (no fake counts).
 | S2 | Student portal: phone-OTP sign-in as a student identity, portal home (journey, actions, team), student-visible messages | todo |
 | DOC1 | Document checklist per service (tenant config); `DocumentStorage` (local / Supabase Storage) | todo |
 | DOC2 | Upload by student or counsellor, verify/reject by staff, events into the feed | todo |
+| AUTH2 | Email sign-in via Supabase (email OTP / magic link; SES as its SMTP); link invites by verified email | todo (needs Supabase project + SES) |
+| DEPLOY1 | Docker images (API, staff app), `docker-compose.yml` (Postgres, Caddy HTTPS), **staging + live env files** (staging: Mailpit as SMTP behind a password, Turnstile test keys), nightly `pg_dump` to S3 + tested restore. Plan: `docs/go-live.md` | todo (**next**, needs owner approval of the plan, go-live step 1) |
+| DEPLOY2 | Staging (Lightsail 2 GB) then live (Lightsail 4 GB), Mumbai; `aimdesk[-staging][-api].softzenithlabs.com`; smoke check list in `docs/go-live.md` | todo (needs AWS account + DNS) |
+| MAIL1 | Amazon SES: domain verification (SPF/DKIM/DMARC), production access | todo (needs AWS + DNS) |
+| GO0 | Western World live on the **staging** server today (owner, 16 Oct): website + form → staging, Google Workspace SMTP, WhatsApp (Meta Cloud API templates) to student + Admin, Meta lead ads webhook. Beginner runbook: `docs/go-live.md` Part A. Code still needed: C0 commit, C1 packaging, C5 privacy page + consent line, C2 real WhatsApp sender, C3 Admin WhatsApp alert, C4 Meta lead ads webhook | plan written; code todo |
+| GO1 | Rehearse on staging (`westernworld-test`), then onboard Western World on live (slug `westernworldvisaservices`), real branches + staff + codes, website pointed at `aimdesk-api`, end-to-end check | todo |
+| BRAND1 | Product name **AimDesk** (owner, 9 Oct) in the UI (title, login, shell); Java package rename not planned | todo |
 | later | Applications, offers, visa cases, IELTS/PTE, payments, reports (PRD Phases 4–5) | todo |
 
-## Session (latest): MOVE1 — Western World website moved to its own repo (owner, 5 Oct)
+## Session (latest): GO0 — go-live runbook for today (owner, 16 Oct)
+
+### What I did
+- Rewrote `docs/go-live.md`: Part A = step-by-step for today (staging takes Western World's real leads), Mermaid
+  diagrams (system, lead sequence, step dependencies), cost, troubleshooting; Part B = the longer staging/live plan,
+  adjusted (staging holds real data until live exists, then data moves once).
+
+### Findings worth knowing
+- `westernworldvisaservices.com` DNS is **not** at Namecheap: nameservers `dns81/82.datanethostingsolutions.com`;
+  A and MX both point at the old server `159.89.161.124` (MX = the bare domain), so moving A without first moving MX
+  to `mail.` would break their email. Runbook step 8.3.
+- `softzenithlabs.com`: Hostinger DNS, Google Workspace mail, no SPF yet. Owner wrote "softzenith.com" (NS1 DNS,
+  not ours): owner confirmed softzenithlabs.com.
+- Website has no privacy page (Meta needs one). WhatsApp templates are free text today; Meta needs approved
+  templates for business-initiated messages (C2 maps kinds → template + params). Staff alert is email only (C3).
+- Spring mail has no SSL/STARTTLS property set; Gmail needs 465 + SSL (C1 adds it).
+
+### Decisions (owner, 16 Oct, later the same day)
+- Website deployed to Vercel (Hobby) from `softzenith-projects/westernworld-website` `main`: https://westernworld-website.vercel.app (testing).
+- Hosting (final for staging): Oracle had no free capacity in Mumbai, so **AWS EC2 free plan** (US$100 credits until 16 Apr 2027, project locked to Sydney): `t3.small` Ubuntu 24.04 x86, 2 GB + 2 GB swap, Elastic IP `54.253.207.84`, Docker 29 + Compose v5 + git installed, key `C:/Users/naman/.ssh/softzenith-staging.pem` (user `ubuntu`). DNS: `crm-staging`, `crm-staging-api`, `crm-staging-mail`.softzenithlabs.com point to that IP. `docs/staging-deploy.md` rewritten for this.
+- First milestone plan: `docs/staging-deploy.md` (page https://claude.ai/artifact/3cfmzGG6jwtWYwMKeQcMhU): website form → staging DB → Admin sees it. Staging sign-in = existing mobile + code; Mailpit test inbox; no Turnstile/WhatsApp/Meta yet.
+- Email sign-in (AUTH2) proposed as our own email one-time code over Google Workspace SMTP, no Supabase (not yet approved).
+- Onboarding blueprint `docs/onboarding/westernworld.blueprint.json` still has slug `westernworld` and no staff: the wizard step changes it to `westernworldvisaservices` and adds the owner as Admin.
+
+### Open for the owner
+- Domain confirmed: softzenithlabs.com (owner, 16 Oct). Still open: Western World email usage and old-hosting login; WhatsApp sender number; approve C0–C5.
+
+## Session: AUTH1 + TRUST1 — phone + sign-in code; visitor address behind a proxy (owner, 8 Oct)
+
+### What I built
+- **AUTH1 (backend)**: `V9__staff_signin_codes.sql` (`app_users.signin_code_hash/_set_at`, phone index);
+  `identity/SigninCodes` (6–8 digits, no repeated digit / straight run), `SigninCodeHasher` (bcrypt), `StaffSignIn`
+  (phone + code across tenants in system context; only wrong codes count: 5/phone → 15 min lock, 20/address/10 min;
+  unknown phone costs a dummy bcrypt), `security/CrmTokens` (HS256, issuer `crm`, 12 h, lists the proven
+  `staff_user_ids`), `security/CodeSignInController` (`POST /api/v1/auth/phone-code`, 401 same message for every
+  refusal), `security/StaffTokenDecoders` (one `JwtDecoder` that picks by issuer: `crm`, Supabase if `SUPABASE_URL`
+  set, dev login in dev; replaces Boot's resource-server properties, removed from `application.yml`),
+  `StaffDirectory.memberships(Jwt)` (code tokens open only their rows, still active, code unchanged since `iat`),
+  `PUT /api/v1/users/{id}/signin-code` (`USER_MANAGE`, never for a stronger role, self allowed; response has
+  `hasSigninCode`, `signinCodeSetAt`), blueprint `signinCode` per staff (validated, hashed at go-live, masked in
+  `toString`, warning when no Admin has one), dev seed: every demo staff code `482917`.
+- **AUTH1 (frontend)**: `lib/auth.ts` `authMode()` = `code` in production builds, `dev` otherwise, `supabase` when
+  configured; `codeLogin`. Login page: sign-in code field (required in production, optional in dev). Staff page:
+  Sign-in code column + Set/Change dialog (Generate, shown once with Copy). Wizard: code per staff row (Generate),
+  never kept in the browser draft or the saved blueprint file (`withoutSigninCodes`). `lib/signin-code.ts` mirrors the
+  backend rules. API types regenerated.
+- **TRUST1**: `shared/web/TrustedProxyFilter` — with `X-Crm-Proxy-Secret` = `crm.trusted-proxy.secret`
+  (`CRM_TRUSTED_PROXY_SECRET`, 32+ chars) the request's address becomes `X-Crm-Client-Ip` (rate limits, captcha);
+  otherwise ignored. Website repo: `proxy.ts` strips browser copies of both headers and adds the secret
+  (`CRM_PROXY_SECRET`) + visitor address (`x-real-ip` / `x-forwarded-for`); default tenant slug →
+  `westernworldvisaservices`; README + `.env.example`.
+- Docs: CLAUDE.md (stack, sign-in flow, decisions: codes, Admin-only, production slug; dev code), `docs/generate_flows.py`
+  (Signing in rewritten + "who sets codes" table, runbook rows, settings) → `docs/flows.md`; `backend/.env.example`.
+- Coverage gate raised to lines 0.98 / branches 0.89 (`backend/pom.xml`).
+
+### Assumptions I made
+- A code belongs to one membership (tenant), not to the person: otherwise one tenant's Admin could open another
+  tenant's account for the same phone. The same code at two businesses opens both (the person picks).
+- Lockout counters are in memory (one instance; reset on restart). Fine for one server; revisit with several.
+- Signing in with a code turns INVITED → ACTIVE without linking an identity, so disable → enable returns such a user
+  to INVITED until their next sign-in (existing `AppUser.enable` rule). Harmless; noted.
+- Supabase phone OTP is dropped from the plan; the Supabase login-page path stays until AUTH2 replaces it with email.
+- Only an Admin sets codes (owner); the first Admin's code is set in the platform wizard. A platform-side "reset the
+  Admin's code" for a locked-out business is not built (PA2).
+
+### What I could NOT verify
+- Vercel's own `x-real-ip` / `x-forwarded-for` behaviour (verified locally against a header echo server: forged
+  headers are replaced, the visitor address and secret arrive). Check once on a Vercel preview (GO1).
+- In production the staff app's Next.js server must pass `X-Forwarded-For` from a private address so Tomcat trusts it
+  (true for Docker on one host; verify in DEPLOY2).
+
+### Verification status
+- `./mvnw verify`: 250 tests, all green, coverage gate (0.98 / 0.89) met.
+- Frontend: `tsc`, `lint` (0 errors, 2 old warnings), `npm test` 102 passed, `npm run build` ok, `npm run e2e` 8/8
+  (incl. new `e2e/signin-code.spec.ts`). Website: `tsc`, `lint`, production build ok.
+- Manual: `POST /api/v1/auth/phone-code` with 9000000001 + 482917 → token → Demo Visas membership; wrong code → 401.
+
+### Git status
+- Uncommitted on `chore/extract-westernworld-website` (CRM) and on `develop` (website). The owner's local backend on
+  :8081 was restarted on the new code (V9 applied to the local database).
+
+## Session: DOC2 — flows page refreshed, enquiry debugging, Supabase vs Postgres + RLS (owner, 8 Oct)
+
+### What I did
+- `docs/generate_flows.py`: Supabase drawn and described as **sign-in only, holds no CRM data**; runbook row "website
+  said thank you but the lead is not in my list" (signed in to another tenant); `NEXT_PUBLIC_CRM_TENANT` must equal
+  `tenants.slug`. Regenerated `docs/flows.md`; republished https://claude.ai/artifact/KCuBRN6GoiU8LApZzPhkDs (the live
+  page still showed EaseMyViz / `sites/westernworld` from before WW1 and MOVE1).
+- Website enquiry did not arrive: backend + Postgres were stopped, and the onboarded tenant's slug is
+  `western-world-visa-services`, not the website's default `westernworld`. Fixed locally with a git-ignored
+  `westernworld-website/.env.local` (`NEXT_PUBLIC_CRM_TENANT=western-world-visa-services`). Lead LD-000001 arrived.
+- Evaluated Supabase (BaaS) vs our Postgres and RLS for the owner (answer in chat): keep Spring + Hibernate
+  `@TenantId`; add Postgres RLS as defence in depth (T8); the production DB host (Supabase Postgres or other) is
+  independent of that and still open.
+
+### Findings worth knowing
+- RLS is off on every table, and `crm_app` owns the tables and runs the app: RLS would need `FORCE ROW LEVEL
+  SECURITY` or a separate migration owner role, or the owner silently bypasses it.
+
+### Verification status
+- Docs-only change; generator ran (34 sections). No code changed, so no test run.
+
+### Git status
+- Uncommitted on `chore/extract-westernworld-website`: `docs/generate_flows.py`, `docs/flows.md`, `HANDOFF.md`.
+
+## Session: MOVE1 — Western World website moved to its own repo (owner, 5 Oct)
 
 ### What I did
 - New repo `codewithnmn/westernworld-website` (created by the owner): the history of `sites/westernworld` extracted with
@@ -682,13 +796,22 @@ spec: menu items appear only when their module exists (no fake counts).
 - Nothing committed yet (branch `main`, no remote). Commit only when the owner asks.
 
 ## Next action
-- Owner: onboard Western World locally through `/platform` (runbook `docs/onboarding.md`, starter file
-  `docs/onboarding/westernworld.blueprint.json`) with their real branches and staff; confirm the service list.
-- S1 Student Master: propose the breakdown to the owner (Student/Contact entity + V9 migration, `CONVERTED` lead status,
-  convert endpoint + button, student list/profile with the same data scopes, lead history on the student), then build.
-- Owner: Cloudflare Turnstile keys and the Supabase phone settings (below).
+- DEPLOY1 (Docker images + compose + backups), once the owner approves the hosting proposal below; owner meanwhile:
+  AWS account (Mumbai), Vercel Pro, DNS access for westernworldvisaservices.com, Cloudflare Turnstile keys.
+- Owner: commit AUTH1 + TRUST1 when happy (CRM branch `feat/auth-signin-codes` from `develop`; website `develop`).
+- S1 Student Master after go-live: propose the breakdown (Student/Contact entity + V10 migration, `CONVERTED` lead
+  status, convert endpoint + button, student list/profile with the same data scopes, lead history on the student).
 
 ## Open questions for the owner
+- Decided 9 Oct (replaces 8 Oct `crm.`/`api.`): product name **AimDesk**; live `aimdesk.softzenithlabs.com` (staff app +
+  `/platform`) and `aimdesk-api.softzenithlabs.com`; staging `aimdesk-staging[-api|-mail].softzenithlabs.com`. Tenant
+  websites keep their own domains and have no staging copy. Ordered plan: `docs/go-live.md`. Needed: DNS access.
+- Hosting (sized 8 Oct: ~10k leads/yr, ≤20 staff, ~5k documents/yr ≈ 5–10 GB/yr): proposed AWS Mumbai — one Lightsail
+  4 GB server with Docker Compose (API, staff app, Postgres, HTTPS proxy), documents in a private S3 bucket (instead
+  of the 25 Sep "Supabase Storage" decision: free tier is 1 GB), nightly `pg_dump` to S3, SES for email, Supabase
+  free for sign-in only. Approve, then a deploy task (Docker images, compose, backups, HTTPS) goes on the roadmap.
+- Production database host: Supabase Postgres (then keep its Data API off our schema) or another host? And
+  approve RLS1 (Postgres RLS as a second tenant-isolation layer) as the next T8 item?
 - Production for Western World to be live for real: hosting (API, UI, PostgreSQL), Supabase phone OTP (+ SMS provider,
   DLT), email provider/domain, and the platform secrets (`CRM_PLATFORM_JWT_SECRET`, first admin). Which hosting?
 - Western World's service list for the enquiry form (starter file has a suggestion from their website).
@@ -703,7 +826,7 @@ spec: menu items appear only when their module exists (no fake counts).
 - Should Branch Managers also assign leads / see the dashboard? (Permission toggles: `LEAD_ASSIGN`, `REPORTS_VIEW`.)
 - Cloudflare Turnstile (free account) for the enquiry captcha: site key → `NEXT_PUBLIC_TURNSTILE_SITE_KEY`, secret →
   `TURNSTILE_SECRET`.
-- Supabase: keep phone confirmations on and phone+password sign-up off (the backend now also requires an OTP `amr`).
+- Supabase (AUTH2, email only): keep sign-ups off; phone OTP is no longer planned (AUTH1 replaced it).
 - Message templates: `MessageTemplates` says "missing values render empty", but JMustache's `nullValue("")` (after
   `defaultValue("")`) makes a key missing from the model throw. A template using a key the code doesn't set would fail
   that event's notifications (retried on restart). Keep the strict behaviour (catches template typos) and fix the
