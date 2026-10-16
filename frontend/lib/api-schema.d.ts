@@ -20,6 +20,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/users/{id}/signin-code": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Set or replace the code this staff member signs in with (with their mobile number); only a hash is stored and sessions opened with an earlier code end */
+        put: operations["setSigninCode"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/leads/{id}": {
         parameters: {
             query?: never;
@@ -216,6 +233,23 @@ export interface paths {
         get: operations["branches"];
         put?: never;
         post: operations["createBranch"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/phone-code": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Sign in with mobile number + sign-in code; then GET /api/v1/me/memberships to pick a tenant */
+        post: operations["signIn"];
         delete?: never;
         options?: never;
         head?: never;
@@ -446,6 +480,9 @@ export interface components {
             joinedOn?: string;
             /** Format: date-time */
             createdAt?: string;
+            hasSigninCode?: boolean;
+            /** Format: date-time */
+            signinCodeSetAt?: string;
         };
         StaffRole: {
             /** Format: uuid */
@@ -453,6 +490,9 @@ export interface components {
             code?: string;
             name?: string;
             assignable?: boolean;
+        };
+        SigninCodeRequest: {
+            code: string;
         };
         UpdateLeadRequest: {
             fullName: string;
@@ -575,6 +615,15 @@ export interface components {
             /** Format: date-time */
             expiresAt?: string;
         };
+        CodeSignInRequest: {
+            phone: string;
+            code: string;
+        };
+        CodeSignInResponse: {
+            accessToken?: string;
+            /** Format: date-time */
+            expiresAt?: string;
+        };
         OnboardingBranch: {
             name?: string;
             city?: string;
@@ -605,6 +654,7 @@ export interface components {
             designation?: string;
             /** Format: date */
             joinedOn?: string;
+            signinCode?: string;
         };
         TenantBlueprint: {
             business?: components["schemas"]["OnboardingBusiness"];
@@ -637,6 +687,7 @@ export interface components {
             phone?: string;
             role?: string;
             branch?: string;
+            hasSigninCode?: boolean;
         };
         OnboardingSummary: {
             name?: string;
@@ -837,6 +888,32 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["StaffRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["StaffResponse"];
+                };
+            };
+        };
+    };
+    setSigninCode: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SigninCodeRequest"];
             };
         };
         responses: {
@@ -1235,6 +1312,30 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["BranchResponse"];
+                };
+            };
+        };
+    };
+    signIn: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CodeSignInRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CodeSignInResponse"];
                 };
             };
         };

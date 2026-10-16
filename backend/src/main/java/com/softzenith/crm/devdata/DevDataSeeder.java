@@ -7,6 +7,7 @@ import com.softzenith.crm.identity.BranchRepository;
 import com.softzenith.crm.identity.DataScope;
 import com.softzenith.crm.identity.DefaultRoles;
 import com.softzenith.crm.identity.RoleRepository;
+import com.softzenith.crm.identity.StaffAdminService;
 import com.softzenith.crm.lead.LeadFilter;
 import com.softzenith.crm.lead.LeadService;
 import com.softzenith.crm.lead.LeadSourceType;
@@ -39,7 +40,7 @@ import java.util.UUID;
  * <p>Branches Rohtak, Bahadurgarh, Rohini. Anuj = Admin ("Super Admin", Rohtak); Naman = Branch Manager, Rohini;
  * Deepak = Branch Manager, Bahadurgarh; Natasha, Indu, Priya = Counsellors of Rohtak, Rohini, Bahadurgarh. Admin and the
  * Branch Managers can also be assigned leads, so each branch has two people who counsel. A receptionist covers the
- * front desk. Sign in with the phone numbers below (dev login, no OTP).
+ * front desk. Sign in with the phone numbers below (dev login, no OTP), or with phone + code {@value #SIGNIN_CODE}.
  *
  * <p>Additive and idempotent, so it also brings an older local database up to date: branches are created by name
  * (others are deactivated), staff are matched by phone, and the mock leads are added once.
@@ -50,6 +51,8 @@ class DevDataSeeder implements ApplicationRunner {
 
     private static final Logger log = LoggerFactory.getLogger(DevDataSeeder.class);
     private static final String SLUG = "demo";
+    /** Every demo staff member's sign-in code (phone + code login); dev login needs none. */
+    static final String SIGNIN_CODE = "482917";
     private static final List<String> BRANCHES = List.of("Rohtak", "Bahadurgarh", "Rohini");
 
     private record Staff(String name, String phone, String role, String branch) {
@@ -93,9 +96,11 @@ class DevDataSeeder implements ApplicationRunner {
     private final AppUserRepository users;
     private final LeadService leads;
     private final TransactionTemplate tx;
+    private final StaffAdminService staffAdmin;
 
     DevDataSeeder(TenantRepository tenants, TenantOnboardingService onboarding, RoleRepository roles,
-                  BranchRepository branches, AppUserRepository users, LeadService leads, TransactionTemplate tx) {
+                  BranchRepository branches, AppUserRepository users, LeadService leads, TransactionTemplate tx,
+                  StaffAdminService staffAdmin) {
         this.tenants = tenants;
         this.onboarding = onboarding;
         this.roles = roles;
@@ -103,6 +108,7 @@ class DevDataSeeder implements ApplicationRunner {
         this.users = users;
         this.leads = leads;
         this.tx = tx;
+        this.staffAdmin = staffAdmin;
     }
 
     @Override
@@ -153,9 +159,13 @@ class DevDataSeeder implements ApplicationRunner {
             var email = s.name().toLowerCase().replace(' ', '.') + "@demo.test";
             var role = roles.findByCode(s.role()).orElseThrow();
             var branch = byName.get(s.branch());
-            users.findByPhoneE164(phone).ifPresentOrElse(
-                    u -> u.updateProfile(s.name(), email, role, branch),
-                    () -> users.save(new AppUser(s.name(), phone, email, role, branch)));
+            var user = users.findByPhoneE164(phone).map(u -> {
+                u.updateProfile(s.name(), email, role, branch);
+                return u;
+            }).orElseGet(() -> users.save(new AppUser(s.name(), phone, email, role, branch)));
+            if (!user.hasSigninCode()) {
+                staffAdmin.setSigninCode(user.getId(), SIGNIN_CODE);
+            }
         }
         users.flush();
 

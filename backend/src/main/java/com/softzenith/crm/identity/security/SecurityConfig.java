@@ -17,8 +17,8 @@ import org.springframework.security.oauth2.server.resource.web.authentication.Be
 import org.springframework.security.web.SecurityFilterChain;
 
 /**
- * Stateless API security. Staff authenticate with an identity-provider JWT (Supabase Auth, phone OTP);
- * this service only verifies it. Tenant, role and permissions come from our own tables, per request.
+ * Stateless API security. Staff authenticate with a JWT from our phone + code sign-in, Supabase Auth or (dev) the dev
+ * login, verified by {@link StaffTokenDecoders}. Tenant, role and permissions come from our own tables, per request.
  */
 @Configuration(proxyBeanMethods = false)
 @EnableMethodSecurity
@@ -27,7 +27,7 @@ class SecurityConfig {
     static final String MEMBERSHIPS_PATH = "/api/v1/me/memberships";
     private static final String[] PUBLIC_PATHS =
             {"/actuator/health/**", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html",
-                    "/api/v1/public/**", "/api/v1/webhooks/**", "/api/v1/dev/**"};
+                    "/api/v1/public/**", "/api/v1/webhooks/**", "/api/v1/dev/**", "/api/v1/auth/**"};
 
     private static final Logger log = LoggerFactory.getLogger(SecurityConfig.class);
     private static final BearerTokenAuthenticationEntryPoint bearer = new BearerTokenAuthenticationEntryPoint();

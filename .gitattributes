@@ -1,0 +1,5 @@
+# Files that run on Linux servers and in Docker keep Unix line endings, whatever the checkout platform.
+*.sh text eol=lf
+mvnw text eol=lf
+Dockerfile text eol=lf
+deploy/** text eol=lf

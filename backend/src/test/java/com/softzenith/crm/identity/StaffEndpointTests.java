@@ -166,6 +166,54 @@ class StaffEndpointTests {
     }
 
     @Nested
+    class SetSigninCode {
+        private org.springframework.test.web.servlet.ResultActions setCode(UUID id, String code, Staff as) throws Exception {
+            return mvc.perform(put("/api/v1/users/{id}/signin-code", id).with(as.token())
+                    .contentType(MediaType.APPLICATION_JSON).content("{\"code\":\"%s\"}".formatted(code)));
+        }
+
+        @Test
+        void anAdminSetsACodeForStaffAndForThemselves() throws Exception {
+            mvc.perform(get("/api/v1/users/{id}", counsellor.id()).with(admin.token()))
+                    .andExpect(jsonPath("$.hasSigninCode").value(false))
+                    .andExpect(jsonPath("$.signinCodeSetAt").doesNotExist());
+            setCode(counsellor.id(), "482917", admin)
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.hasSigninCode").value(true))
+                    .andExpect(jsonPath("$.signinCodeSetAt").isNotEmpty())
+                    .andExpect(jsonPath("$.code").doesNotExist());
+            setCode(admin.id(), "739164", admin).andExpect(status().isOk());
+        }
+
+        @Test
+        void aWeakOrMalformedCodeIs400() throws Exception {
+            setCode(counsellor.id(), "123456", admin).andExpect(status().isBadRequest());
+            setCode(counsellor.id(), "12ab56", admin).andExpect(status().isBadRequest());
+            setCode(counsellor.id(), "", admin).andExpect(status().isBadRequest());
+        }
+
+        @Test
+        void unknownOrOtherTenantsStaffAre404() throws Exception {
+            setCode(UUID.randomUUID(), "482917", admin).andExpect(status().isNotFound());
+            var other = fixtures.staff(fixtures.tenant(), DefaultRoles.COUNSELLOR);
+            setCode(other.id(), "482917", admin).andExpect(status().isNotFound());
+        }
+
+        @Test
+        void onlyStaffManagersMayAndNeverForSomeoneWithMorePower() throws Exception {
+            setCode(counsellor.id(), "482917", receptionist).andExpect(status().isForbidden());
+            setCode(counsellor.id(), "482917", counsellor).andExpect(status().isForbidden());
+            mvc.perform(put("/api/v1/users/{id}/signin-code", counsellor.id())
+                    .contentType(MediaType.APPLICATION_JSON).content("{\"code\":\"482917\"}")).andExpect(status().isUnauthorized());
+
+            // A narrow HR role may manage staff, but must not take over the Admin by setting their code.
+            fixtures.role(tenant, "HR", DataScope.ALL, false, java.util.Set.of(Permission.USER_VIEW, Permission.USER_MANAGE));
+            var hr = fixtures.staff(tenant, "HR");
+            setCode(admin.id(), "482917", hr).andExpect(status().isForbidden());
+        }
+    }
+
+    @Nested
     class DisableEnableReset {
         @Test
         void disableThenEnableAnInvitedUserReturnsToInvited() throws Exception {

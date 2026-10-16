@@ -100,6 +100,17 @@ class StaffController {
         return StaffResponse.of(staff.resetSignIn(id));
     }
 
+    @PutMapping("/{id}/signin-code")
+    @PreAuthorize("hasAuthority('USER_MANAGE')")
+    @Operation(summary = "Set or replace the code this staff member signs in with (with their mobile number); "
+            + "only a hash is stored and sessions opened with an earlier code end")
+    StaffResponse setSigninCode(@PathVariable UUID id, @Valid @RequestBody SigninCodeRequest request) {
+        return StaffResponse.of(staff.setSigninCode(id, request.code()));
+    }
+
+    record SigninCodeRequest(@NotBlank @Size(max = 20) String code) {
+    }
+
     record StaffRequest(@NotBlank @Size(max = 200) String fullName,
                         @NotBlank String phone,
                         @Email String email,
@@ -121,7 +132,7 @@ class StaffController {
 
     record StaffResponse(UUID id, String fullName, String phone, String email, StaffRole role, StaffBranch branch,
                          UserStatus status, String employeeCode, String designation, LocalDate joinedOn,
-                         OffsetDateTime createdAt) {
+                         OffsetDateTime createdAt, boolean hasSigninCode, OffsetDateTime signinCodeSetAt) {
         static StaffResponse of(AppUser u) {
             var r = u.getRole();
             var b = u.getBranch();
@@ -129,7 +140,8 @@ class StaffController {
                     new StaffRole(r.getId(), r.getCode(), r.getName(), r.isAssignable()),
                     b == null ? null : new StaffBranch(b.getId(), b.getName()),
                     u.getStatus(), u.getEmployeeCode(), u.getDesignation(), u.getJoinedOn(),
-                    u.getCreatedAt() == null ? null : u.getCreatedAt().atOffset(ZoneOffset.UTC));
+                    u.getCreatedAt() == null ? null : u.getCreatedAt().atOffset(ZoneOffset.UTC),
+                    u.hasSigninCode(), u.getSigninCodeSetAt() == null ? null : u.getSigninCodeSetAt().atOffset(ZoneOffset.UTC));
         }
     }
 }

@@ -36,6 +36,22 @@ class AppUserTest {
     }
 
     @Test
+    void aCorrectSigninCodeActivatesAnInvitedMemberButNeverADisabledOne() {
+        var user = user();
+        assertThat(user.hasSigninCode()).isFalse();
+        user.setSigninCode("{bcrypt}hash", java.time.Instant.now());
+        assertThat(user.hasSigninCode()).isTrue();
+
+        user.signedInWithCode();
+        assertThat(user.getStatus()).isEqualTo(UserStatus.ACTIVE);
+
+        var disabled = user();
+        disabled.disable();
+        disabled.signedInWithCode();
+        assertThat(disabled.getStatus()).isEqualTo(UserStatus.DISABLED);
+    }
+
+    @Test
     void permissionsOnlyApplyWhileActive() {
         var user = user();
         assertThat(user.can(Permission.LEAD_VIEW)).isFalse(); // invited

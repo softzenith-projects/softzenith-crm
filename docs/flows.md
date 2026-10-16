@@ -61,7 +61,7 @@ How the CRM is built and how it behaves: the architecture (apps, modules, reques
 <a id="architecture"></a>
 ### System at a glance
 
-Three web apps and one API. Staff use the CRM app; the public uses the CRM's own enquiry page or a tenant's website (Western World runs on its own domain). Browsers never call the API directly: each Next.js server forwards `/api` calls to it, and the Western World site forwards only the two public enquiry endpoints. The API is one Spring Boot application split into modules, over one PostgreSQL schema where every tenant row carries `tenant_id`.
+Three web apps and one API. Staff use the CRM app; the public uses the CRM's own enquiry page or a tenant's website (Western World runs on its own domain). Browsers never call the API directly: each Next.js server forwards `/api` calls to it, and the Western World site forwards only the two public enquiry endpoints. The API is one Spring Boot application split into modules, over one PostgreSQL schema where every tenant row carries `tenant_id`. Staff sign in with mobile + a sign-in code checked by the API itself. Supabase is optional and only for sign-in (email, planned AUTH2); it holds no CRM data, and the API reaches the database through its own connection, never through Supabase's data API.
 
 ```mermaid
 flowchart LR
@@ -79,7 +79,7 @@ flowchart LR
   MO -->|SMTP| MAIL["Email<br/>Mailpit :8025 locally"]
   MO -.->|"demo only for now"| WA["WhatsApp provider"]
   MO --> LOG["logs/crm.log<br/>JSON in production"]
-  S -.->|"phone OTP in production"| SUPA["Supabase Auth"]
+  S -.->|"email sign-in, planned"| SUPA["Supabase Auth (optional)<br/>sign-in only, holds no CRM data"]
   API -.->|"checks token signature"| SUPA
   API -.->|"checks captcha when configured"| CF["Cloudflare Turnstile"]
 ```
@@ -288,13 +288,13 @@ sequenceDiagram
 <a id="arch-frontends"></a>
 ### The two front-end apps
 
-Both are Next.js 16 apps with client-side pages. The staff app builds its menu from the signed-in user's permissions and calls the API through a client whose types are generated from the backend's OpenAPI spec (`npm run gen:api`). Tenant websites live in their own repositories (Western World: `codewithnmn/westernworld-website`): content pages, one enquiry form component used everywhere, redirects that keep every old URL working, and the public enquiry API as their only link to the CRM.
+Both are Next.js 16 apps with client-side pages. The staff app builds its menu from the signed-in user's permissions and calls the API through a client whose types are generated from the backend's OpenAPI spec (`npm run gen:api`). Tenant websites live in their own repositories (Western World: `softzenith-projects/westernworld-website`): content pages, one enquiry form component used everywhere, redirects that keep every old URL working, and the public enquiry API as their only link to the CRM.
 
 ```mermaid
 flowchart LR
   subgraph STAFF["frontend/ : CRM staff app"]
     direction TB
-    LG["app/login<br/>dev login or Supabase OTP"] --> SH["components/AppShell<br/>GET /me, menu from permissions"]
+    LG["app/login<br/>mobile + sign-in code, dev login"] --> SH["components/AppShell<br/>GET /me, menu from permissions"]
     SH --> P1["app/(staff)/dashboard"]
     SH --> P2["app/(staff)/leads<br/>and leads/[id]"]
     SH --> P3["app/(staff)/admin<br/>staff, branches"]
@@ -551,31 +551,36 @@ flowchart TD
 <a id="flow-signin"></a>
 ### Signing in
 
-Production uses Supabase phone OTP; development uses a backend dev login with no OTP. Both give a token with the same shape, so everything after that is identical. A sign-in proven by an OTP (token amr) links every open invite for that phone, also on later sign-ins (e.g. a second business invites the same person). Dev login refuses to start with the prod profile.
+Production: mobile number + the personal sign-in code the business's Admin set (no SMS). Only a bcrypt hash of the code is stored. A code belongs to one membership, so it opens only the businesses whose own code it matches, never every business the phone works for. 5 wrong codes lock that phone for 15 minutes; 20 failures from one address in 10 minutes pause that address. Setting a new code ends sessions opened with the old one. Development also has a dev login (phone only), which refuses to start with the prod profile. Supabase tokens (email sign-in, planned AUTH2) are accepted when SUPABASE_URL is set; they link open invites by verified phone.
 
 ```mermaid
 flowchart TD
-  A(["Staff enters mobile number"]) --> B{"Supabase configured?"}
-  B -- "yes: production" --> C["Supabase texts an OTP"]
-  C --> C2["Staff enters OTP,<br/>Supabase returns signed token"]
-  B -- "no: development" --> D["POST /api/v1/dev/login<br/>backend signs a token"]
-  C2 --> E["Browser stores token"]
-  D --> E
+  A(["Staff enters mobile number<br/>and sign-in code"]) --> B["POST /api/v1/auth/phone-code"]
+  B --> L{"Phone or address<br/>locked out?"}
+  L -- yes --> L1["429 + Retry-After"]
+  L -- no --> C["Find this phone's staff rows with a code,<br/>in every business (system context)"]
+  C --> D{"Code matches<br/>any row's hash?"}
+  D -- no --> D1["401 'Wrong mobile number or sign-in code'<br/>(same answer for an unknown phone)"]
+  D -- yes --> E["Matched rows: INVITED to ACTIVE<br/>token lists only those rows (12 h)"]
   E --> F["GET /api/v1/me/memberships"]
-  F --> G{"Token signature,<br/>expiry, issuer OK?"}
+  F --> G{"Token issuer known, signature,<br/>expiry, audience OK?"}
   G -- no --> G1["401"]
-  G -- yes --> H["Staff rows already linked<br/>to this identity"]
-  H --> H2{"Signed in with an OTP<br/>(amr otp/sms)?"}
-  H2 -- yes --> I["Link open invites for this phone<br/>in other tenants: INVITED to ACTIVE"]
-  H2 -- no --> J
-  I --> J["Keep active users<br/>of active tenants"]
-  J --> K{"How many tenants?"}
+  G -- yes --> H["Rows from the token, still active,<br/>code not changed since"]
+  H --> K{"How many businesses?"}
   K -- "0" --> K0(["Not registered as staff"])
-  K -- "1" --> K1(["Remember tenant, open Leads"])
+  K -- "1" --> K1(["Remember business, open Leads"])
   K -- "2 or more" --> K2(["Staff picks the organisation"])
 ```
 
-*Where in the code:* `frontend/app/login/page.tsx · identity/security/DevLoginController.java · identity/StaffDirectory.memberships`
+**Who sets codes**
+
+| When | Who | How |
+|---|---|---|
+| Onboarding | SoftZenith platform admin | Wizard, Staff step: a code per person (at least the first Admin); never kept in the draft or the saved file |
+| After go-live | The business's Admin (USER_MANAGE) | Staff page, Set / Change sign-in code; shown once to hand over; never for a role stronger than their own |
+| Forgotten code | The Admin | Set a new one (codes cannot be read back); the old code and its sessions stop working |
+
+*Where in the code:* `frontend/app/login/page.tsx · identity/security/CodeSignInController · identity/StaffSignIn · identity/security/StaffTokenDecoders · identity/StaffDirectory.memberships`
 
 <a id="flow-request"></a>
 ### Every staff request (the common pipeline)
@@ -887,7 +892,7 @@ Every error is an RFC 9457 problem JSON with `status`, `detail` and `requestId`.
 | Status | Means | Typical causes | Where it is produced | What to check |
 |---|---|---|---|---|
 | 400 Bad Request | The request is wrong | Missing or invalid field (listed in `detail`); name with digits or a URL; closing a lead without a reason; bad or missing `X-Tenant-ID` for a user in several tenants | `GlobalExceptionHandler`, `StaffContextFilter`, entity rules (`Lead.changeStatus`) | `detail` names the field; log line `400 validation failed: ...` |
-| 401 Unauthorized | Not signed in | No token, expired or forged token, wrong issuer (Supabase URL) | Spring Security, `SecurityConfig` entry point | Log `401 GET /path: <reason>`; the staff app clears the session and goes to login |
+| 401 Unauthorized | Not signed in | No token, expired or forged token, unknown issuer, a code changed since sign-in | Spring Security, `SecurityConfig` entry point | Log `401 GET /path: <reason>`; the staff app clears the session and goes to login |
 | 403 Forbidden | Signed in but not allowed | Role lacks the endpoint's permission; not active staff of that tenant; captcha failed on the public form; granting a role stronger than your own | `@PreAuthorize`, `StaffContextFilter`, `PublicEnquiryController`, `StaffAdminService` | Log `403 ...` or `Rejected: subject ...`; compare with the permission matrix |
 | 404 Not Found | Nothing to show | Wrong id; record of another tenant; lead outside the user's data scope (BRANCH / OWN); unknown tenant slug | `NotFoundException` from services | Scope first: does the user's role have data_scope ALL? |
 | 409 Conflict | Clashes with current data | Phone already used by another staff member; assigning a closed lead; someone else saved the record first (version check); database constraint | `ConflictException`, optimistic lock, integrity violation | Log shows the rule or `constraint=<name>`; reload and retry for concurrent edits |
@@ -904,11 +909,15 @@ Start from what the person sees. Most answers are in the lead page (history and 
 | Symptom | Likely cause | How to confirm | Fix |
 |---|---|---|---|
 | Enquiry submitted but no new lead in the list | Same phone + email already has an open lead, so it was added to that lead as a repeat | Log `Repeat enquiry #n on lead WWV-...`; the older lead has a Repeat badge and sits on top | Nothing to fix: search by phone. Close the old lead to get a new one next time |
+| Website said thank you but the lead is not in my list | Signed in to another tenant (the dev phones are Demo Visas staff), or the lead is outside your data scope | `select lead_number, t.slug from leads l join tenants t on t.id = l.tenant_id order by l.created_at desc limit 5` | Sign in as staff of that tenant (e.g. its onboarded Admin) and pick it on the organisation screen |
+| Website visitors get 'Too many enquiries from your network' although few enquire | The website runs on another host (Vercel) without the proxy secret, so the CRM counts every visitor as the host's address | Log `Ignored X-Crm-Client-Ip ... proxy secret missing or wrong`, or no such header at all | Set the same 32+ character value as `CRM_PROXY_SECRET` (website) and `CRM_TRUSTED_PROXY_SECRET` (CRM) |
 | Enquiry submitted but no lead at all | Dropped as a bot (honeypot), refused by rate limit (429) or captcha (403), wrong tenant slug | Log `dropped: honeypot filled`, `429`, `captcha missing or invalid`; the website's `NEXT_PUBLIC_CRM_TENANT` | Correct the slug / captcha keys; wait for the rate limit |
 | A lead exists but a user cannot see it | The user's role has data scope BRANCH or OWN | `roles.data_scope` for their role; the lead's branch and assignee | Assign it to them, set the lead's branch, or change the role's scope |
 | Website form shows an error, nothing in the CRM log | Website server cannot reach the API | No `crm.access` line for that time; website server output | Set `CRM_API_URL` on the website server; start the backend |
 | Welcome email not received | Message FAILED, SKIPPED or never attempted | Lead page, Messages sent: SENT (check spam / Mailpit), FAILED (error shown), SKIPPED (daily cap of 5), none (event still pending) | Fix SMTP settings (`MAIL_*`); pending events are re-sent on restart |
 | WhatsApp not received | WhatsApp is demo only | Status DEMO in Messages sent | Expected until the WhatsApp Business API is set up (T7) |
+| 'Wrong mobile number or sign-in code' | No code set for them, a typo, DISABLED, or the code was changed | Staff page, Sign-in code column; log `Code sign-in refused for +91******1234` | The Admin sets a new code (Staff page) and hands it over |
+| 'Too many wrong codes for this number' | 5 wrong codes: the phone is locked for 15 minutes | 429 with Retry-After; log `phone locked for 15 min` | Wait, or the Admin sets a new code; then sign in again |
 | Staff cannot sign in, 'not registered as staff' | No staff row for that phone in an active tenant, user DISABLED, or the token does not prove an OTP sign-in | `app_users` by `phone_e164`; log `Rejected: subject ...` | Add or enable the staff member; Staff page, Reset sign-in if the identity changed |
 | A page shows 'no permission' or a menu item is missing | The role lacks the permission | Permission matrix; `role_permissions` for the role | Grant the permission (DefaultRoles for new tenants + a migration for existing ones) |
 | 'Record was modified by someone else' | Two people edited the same lead or staff record | 409 with a version conflict in the log | Reload and apply the change again |
@@ -927,7 +936,7 @@ Paths are relative to `backend/src/main/java/com/softzenith/crm/` and `frontend/
 | Leads: list, detail, edit, status, assignment | `lead/web/LeadController`, `lead/LeadService`, `lead/Lead` (status rules), `LeadFilter`, `LeadRepository` | `app/(staff)/leads`, `leads/[id]`, `components/LeadForm.tsx` | `LeadFlowTests` |
 | Data scope (ALL / BRANCH / OWN) | `LeadService.scopeSpecification`, `inScope`; `identity/DataScope`, `Role` | none (the backend decides) | `LeadScopeTests` |
 | Notifications | `notification/LeadNotifications` (who gets what), `Notifier` (send, cap, idempotency, log), `MessageTemplates`, `resources/templates/notifications/*.mustache`, `DemoWhatsAppSender` | Lead page, Messages sent | `NotifierTests`, `LeadFlowTests` |
-| Sign-in and tenant choice | `identity/security/SecurityConfig`, `JwtClaims`, `StaffContextFilter`, `DevLogin*`; `identity/StaffDirectory` | `app/login`, `lib/auth.ts`, `lib/supabase.ts`, `lib/session.ts` | `MeControllerTests`, `DevLoginTest` |
+| Sign-in and tenant choice | `identity/security/SecurityConfig`, `StaffTokenDecoders`, `CodeSignInController`, `CrmTokens`, `JwtClaims`, `StaffContextFilter`, `DevLogin*`; `identity/StaffSignIn`, `SigninCodes`, `StaffDirectory` | `app/login`, `lib/auth.ts`, `lib/supabase.ts`, `lib/session.ts` | `MeControllerTests`, `DevLoginTest` |
 | Roles and permissions | `identity/Permission`, `DefaultRoles`, `Role`, `RoleProvisioner`; migrations V3 to V5 and V7 (data scopes) | `components/AppShell.tsx` (`NAV`, `can`) | `TenantOnboardingTests` |
 | Staff and branches | `identity/StaffAdminService`, `web/StaffController`, `web/OrganisationController` | `app/(staff)/admin/staff`, `admin/branches` | `StaffAdminTests` |
 | Dashboard | `LeadService.stats`, `LeadRepository` count queries | `app/(staff)/dashboard` | `LeadFlowTests` |
@@ -969,22 +978,25 @@ Get-Process mailpit -ErrorAction SilentlyContinue | Stop-Process -Force
 <a id="dbg-config"></a>
 ### Settings that change behaviour
 
-Environment variables for deployment and the `application.yml` keys worth knowing when debugging. Local development needs none of the variables; with the `prod` profile the database and Supabase ones are required.
+Environment variables for deployment and the `application.yml` keys worth knowing when debugging. Local development needs none of the variables; with the `prod` profile the database ones and `CRM_AUTH_TOKEN_SECRET` are required.
 
 | Setting | Where | Default | Effect |
 |---|---|---|---|
 | `DB_URL`, `DB_USER`, `DB_PASSWORD` | backend | local crm / crm_app | Database connection (required in prod) |
-| `SUPABASE_URL` | backend | placeholder | Issuer and signing keys of staff sign-in tokens (required in prod) |
+| `CRM_AUTH_TOKEN_SECRET` | backend | random per start | Signs staff sessions from mobile + code sign-in (required in prod, 32+ characters) |
+| `SUPABASE_URL` | backend | empty | Optional Supabase project whose sign-in tokens are also accepted (email sign-in, AUTH2) |
 | `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_FROM` | backend | Mailpit on localhost:1025 | Where emails go and who they come from |
 | `FRONTEND_URL` | backend | http://localhost:3000 | Links to leads inside staff emails |
+| `CRM_TRUSTED_PROXY_SECRET` | backend | empty (ignored) | Shared with a tenant website on another host (its `CRM_PROXY_SECRET`); with it the website passes each visitor's address (`X-Crm-Client-Ip`) for the rate limits and captcha |
 | `TURNSTILE_SECRET` | backend | empty (no captcha) | Captcha required on public enquiries when set |
 | `LOG_FILE` | backend | logs/crm.log | Log file path (20 MB files, 30 days, 2 GB cap) |
 | `crm.public-intake.rate-limit.*` | application.yml | 5/min and 30/h per IP, 5/h per phone, 1000/h per tenant | Public form limits, answered with 429 |
 | `crm.notifications.enquirer-daily-cap` | application.yml | 5 | Messages of one kind to one enquirer per 24 h; the rest are logged SKIPPED |
 | `logging.level.com.softzenith.crm` | application.yml | info (debug in dev) | More detail; add `logging.level.org.hibernate.SQL=debug` to see SQL |
 | `CRM_API_URL` | both front ends | http://localhost:8081 | Where the Next.js server forwards API calls |
-| `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` | staff app | empty (dev login) | Phone OTP sign-in |
-| `NEXT_PUBLIC_CRM_TENANT` | website | westernworld | Tenant that receives the website's enquiries |
+| `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` | staff app | empty | Supabase sign-in on the login page (unused until AUTH2) |
+| `CRM_PROXY_SECRET` | website | empty | The CRM's `CRM_TRUSTED_PROXY_SECRET`; `proxy.ts` sends it with the visitor's address (required in production) |
+| `NEXT_PUBLIC_CRM_TENANT` | website | westernworld | Tenant slug that receives the website's enquiries; must equal `tenants.slug` (onboarded Western World: `western-world-visa-services`) |
 | `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | both front ends | empty | Shows the captcha widget on enquiry forms |
 
 *Where in the code:* `backend/.env.example · frontend/.env.example · backend/src/main/resources/application*.yml`

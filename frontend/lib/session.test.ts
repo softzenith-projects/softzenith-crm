@@ -1,6 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { json, mockApi, requests } from "@/test/api-mock";
-import { authMode, devLogin } from "./auth";
+import { authMode, codeLogin, devLogin } from "./auth";
 import { session } from "./session";
 
 describe("session", () => {
@@ -18,8 +18,17 @@ describe("session", () => {
 });
 
 describe("dev login", () => {
-  it("is the sign-in mode when Supabase is not configured", () => {
-    expect(authMode).toBe("dev");
+  it("is the sign-in mode outside production builds when Supabase is not configured", () => {
+    expect(authMode()).toBe("dev");
+  });
+
+  it("gives way to mobile + sign-in code in a production build", () => {
+    vi.stubEnv("NODE_ENV", "production");
+    try {
+      expect(authMode()).toBe("code");
+    } finally {
+      vi.unstubAllEnvs();
+    }
   });
 
   it("exchanges a phone number for a token", async () => {
@@ -31,5 +40,18 @@ describe("dev login", () => {
   it("surfaces the backend's reason when it refuses", async () => {
     mockApi(() => json({ detail: "Invalid phone number: 12" }, 400));
     await expect(devLogin("12")).rejects.toThrow("Invalid phone number: 12");
+  });
+});
+
+describe("code login", () => {
+  it("exchanges a phone and sign-in code for a token", async () => {
+    mockApi(() => json({ accessToken: "code-token", expiresAt: "2026-10-01T00:00:00Z" }));
+    await expect(codeLogin("9000000001", " 482917 ")).resolves.toBe("code-token");
+    expect(requests.at(-1)).toMatchObject({ method: "POST", path: "/api/v1/auth/phone-code", body: { phone: "9000000001", code: "482917" } });
+  });
+
+  it("passes on the backend's refusal", async () => {
+    mockApi(() => json({ detail: "Wrong mobile number or sign-in code" }, 401));
+    await expect(codeLogin("9000000001", "739164")).rejects.toThrow("Wrong mobile number or sign-in code");
   });
 });

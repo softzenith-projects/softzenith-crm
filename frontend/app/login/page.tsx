@@ -7,10 +7,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ErrorText, Field } from "@/components/common";
 import { api, errorMessage, type Schemas } from "@/lib/api";
-import { authMode, devLogin, sendOtp, verifyOtp } from "@/lib/auth";
+import { authMode, codeLogin, devLogin, sendOtp, verifyOtp } from "@/lib/auth";
 import { session } from "@/lib/session";
 
 export default function LoginPage() {
+  const mode = authMode();
   const router = useRouter();
   const [phone, setPhone] = useState("");
   const [code, setCode] = useState("");
@@ -39,7 +40,8 @@ export default function LoginPage() {
     setError("");
     setBusy(true);
     try {
-      if (authMode === "dev") await enter(await devLogin(phone));
+      if (mode === "code" || (mode === "dev" && code.trim())) await enter(await codeLogin(phone, code));
+      else if (mode === "dev") await enter(await devLogin(phone));
       else if (!otpSent) {
         await sendOtp(phone);
         setOtpSent(true);
@@ -71,7 +73,11 @@ export default function LoginPage() {
           <div>
             <h2 className="text-2xl font-semibold tracking-tight">Staff sign in</h2>
             <p className="text-sm text-muted-foreground">
-              {authMode === "dev" ? "Development sign-in (no OTP)." : "We will send a one-time code to your mobile."}
+              {mode === "code"
+                ? "Use your mobile number and the sign-in code your administrator gave you."
+                : mode === "dev"
+                  ? "Development sign-in: mobile number only, or add a sign-in code to try the real sign-in."
+                  : "We will send a one-time code to your mobile."}
             </p>
           </div>
 
@@ -99,6 +105,12 @@ export default function LoginPage() {
                 <Input type="tel" required value={phone} onChange={(e) => setPhone(e.target.value)}
                        placeholder="98765 43210" disabled={otpSent} className="h-11" autoFocus />
               </Field>
+              {mode !== "supabase" && (
+                <Field label={mode === "dev" ? "Sign-in code (optional here)" : "Sign-in code"}>
+                  <Input type="password" inputMode="numeric" autoComplete="current-password" required={mode === "code"}
+                         value={code} onChange={(e) => setCode(e.target.value)} className="h-11" />
+                </Field>
+              )}
               {otpSent && (
                 <Field label="One-time code">
                   <Input inputMode="numeric" required value={code} onChange={(e) => setCode(e.target.value)} className="h-11" autoFocus />
@@ -106,14 +118,14 @@ export default function LoginPage() {
               )}
               <ErrorText>{error}</ErrorText>
               <Button type="submit" disabled={busy} className="h-11 w-full">
-                {busy ? "Please wait…" : authMode === "dev" ? "Sign in" : otpSent ? "Verify code" : "Send code"}
+                {busy ? "Please wait…" : mode !== "supabase" ? "Sign in" : otpSent ? "Verify code" : "Send code"}
               </Button>
             </form>
           )}
 
-          {authMode === "dev" && (
+          {mode === "dev" && (
             <div className="rounded-xl border border-dashed p-4 text-xs text-muted-foreground">
-              <p className="mb-2 font-medium text-foreground">Demo users</p>
+              <p className="mb-2 font-medium text-foreground">Demo users <span className="font-normal">(sign-in code 482917)</span></p>
               <ul className="grid grid-cols-2 gap-1">
                 {[["9000000001", "Admin"], ["9000000002", "Branch Manager"], ["9000000003", "Counsellor"], ["9000000004", "Receptionist"]].map(
                   ([p, r]) => (

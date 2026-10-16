@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
-import { json, routes } from "@/test/api-mock";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { json, requests, routes } from "@/test/api-mock";
 import { router } from "@/test/navigation";
 import { session } from "@/lib/session";
 import LoginPage from "./page";
@@ -60,5 +60,44 @@ describe("Login (dev mode)", () => {
     render(<LoginPage />);
     await userEvent.click(screen.getByRole("button", { name: /9000000004 · Receptionist/ }));
     expect(screen.getByRole("textbox", { name: /mobile number/i })).toHaveValue("9000000004");
+  });
+});
+
+describe("Login with a sign-in code", () => {
+  it("in development, uses the code sign-in when a code is typed", async () => {
+    routes({
+      "POST /api/v1/auth/phone-code": () => json({ accessToken: "code-tok" }),
+      "GET /api/v1/me/memberships": () => json([membership("t-1", "Demo Visas", "Admin")]),
+    });
+    render(<LoginPage />);
+    await userEvent.type(screen.getByRole("textbox", { name: /mobile number/i }), "9000000001");
+    await userEvent.type(screen.getByLabelText(/sign-in code/i), "482917");
+    await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
+
+    await vi.waitFor(() => expect(router.replace).toHaveBeenCalledWith("/"));
+    expect(session.token()).toBe("code-tok");
+    expect(requests.find((r) => r.path === "/api/v1/auth/phone-code")?.body).toEqual({ phone: "9000000001", code: "482917" });
+  });
+
+  describe("in a production build", () => {
+    beforeEach(() => vi.stubEnv("NODE_ENV", "production"));
+    afterEach(() => vi.unstubAllEnvs());
+
+    it("needs the code and offers no development sign-in", async () => {
+      render(<LoginPage />);
+      expect(screen.getByLabelText(/sign-in code/i)).toBeRequired();
+      expect(screen.queryByText(/Demo users/)).toBeNull();
+      expect(screen.getByText(/sign-in code your administrator gave you/)).toBeInTheDocument();
+    });
+
+    it("shows the backend's refusal", async () => {
+      routes({ "POST /api/v1/auth/phone-code": () => json({ detail: "Wrong mobile number or sign-in code" }, 401) });
+      render(<LoginPage />);
+      await userEvent.type(screen.getByRole("textbox", { name: /mobile number/i }), "9000000001");
+      await userEvent.type(screen.getByLabelText(/sign-in code/i), "739164");
+      await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
+      expect(await screen.findByText("Wrong mobile number or sign-in code")).toBeInTheDocument();
+      expect(requests.some((r) => r.path === "/api/v1/dev/login")).toBe(false);
+    });
   });
 });

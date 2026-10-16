@@ -119,6 +119,22 @@ class BlueprintValidatorTest {
     }
 
     @Test
+    void signinCodesAreCheckedAndAnAdminWithoutOneIsFlagged() {
+        var admin = new OnboardingStaff("Boss", "9876543210", null, "Admin", null, null, null, null, " 739164 ");
+        var weak = new OnboardingStaff("Weak", "9876543211", null, "Counsellor", null, null, null, null, "123456");
+        var v = BlueprintValidator.validate(new TenantBlueprint(valid().business(), null, null, List.of(admin, weak)));
+        assertThat(v.problems()).extracting(OnboardingProblem::field).containsExactly("staff[1].signinCode");
+        assertThat(v.staff().getFirst().signinCode()).isEqualTo("739164"); // trimmed
+        assertThat(v.staff().getFirst().toString()).doesNotContain("739164");
+
+        var noCode = BlueprintValidator.validate(new TenantBlueprint(valid().business(), null, null, ADMIN_ONLY));
+        assertThat(noCode.problems()).isEmpty();
+        assertThat(noCode.warnings()).anyMatch(w -> w.contains("No Admin has a sign-in code"));
+        assertThat(BlueprintValidator.validate(new TenantBlueprint(valid().business(), null, null, List.of(admin))).warnings())
+                .noneMatch(w -> w.contains("sign-in code"));
+    }
+
+    @Test
     void withoutSettingsThePlatformDefaultsApplyAndEmailsComeFromTheBusinessName() {
         var v = BlueprintValidator.validate(new TenantBlueprint(valid().business(), null, null, ADMIN_ONLY));
         assertThat(v.problems()).isEmpty();
