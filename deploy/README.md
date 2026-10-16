@@ -33,7 +33,7 @@ from `deploy/.env` and run `cd deploy && docker compose up -d api`.
 ## Nightly backup
 
 ```bash
-echo '30 21 * * * root /opt/aimdesk/deploy/backup.sh >> /opt/aimdesk/deploy/backups/backup.log 2>&1' \
+echo '30 21 * * * ubuntu /opt/aimdesk/deploy/backup.sh >> /opt/aimdesk/deploy/backups/backup.log 2>&1' \
   | sudo tee /etc/cron.d/aimdesk-backup
 ```
 
