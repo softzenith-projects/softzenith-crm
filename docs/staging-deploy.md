@@ -56,7 +56,7 @@ flowchart TB
 | 5 | DNS at Hostinger: A `crm-staging`, `crm-staging-api`, `crm-staging-mail` → `54.253.207.84` | You | Done, resolving |
 | 6 | Packaging code (C0, C1 below) | Claude | Done: branch `feat/staging-deploy` |
 | 7 | Access: key at `C:\Users\naman\.ssh\softzenith-staging.pem` (locked to your user), SSH as `ubuntu` works | You + Claude | Done. No deploy key needed: the repo is public |
-| 8 | Install and start | Claude | |
+| 8 | Install and start | Claude | Done 16 Oct: all 5 containers up, HTTPS on all three addresses, 9 migrations applied, console admin `softzenith` created, nightly backup cron installed and tested |
 | 9 | Set up Western World | You | |
 | 10 | Connect the Vercel website | You | |
 | 11 | Test | You | |

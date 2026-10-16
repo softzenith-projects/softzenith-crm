@@ -95,6 +95,10 @@ spec: menu items appear only when their module exists (no fake counts).
 
 - DEPLOY1 (staging): `deploy/docker-compose.yml`, `Caddyfile` (API address exposes only `/api/v1/public/*` and `/actuator/health`; staff API only via the staff app), `setup-env.sh` (secrets generated on the server), `deploy.sh` (builds API then web, one at a time for 2 GB), `backup.sh` (nightly `pg_dump -Fc`, 7 days), `deploy/README.md`. `frontend/next.config.ts`: `output: standalone` only when `NEXT_OUTPUT=standalone` (Docker), so dev/e2e are unchanged. `.gitattributes` keeps scripts LF. Verified locally: frontend `tsc` only; the images are first built on the server.
 
+- Staging server live (16 Oct): `/opt/aimdesk` on branch `feat/staging-deploy`, `deploy/.env` generated on the server (never printed). Verified from outside: Let's Encrypt certs for `crm-staging`, `crm-staging-api`, `crm-staging-mail`; `/actuator/health` UP; API address returns 404 for staff paths and a problem JSON for the public enquiry endpoints; staff `/login` and `/platform` 200; Mailpit 401 without login; HTTP redirects to HTTPS. Flyway applied V1-V9 on Postgres 18. Memory after start: API 433 MB, DB 52 MB, web 43 MB, ~0.8 GB free. Backup cron `/etc/cron.d/aimdesk-backup` (21:30 UTC) and a test dump OK.
+- Build fixes found on the server: `frontend/package-lock.json` regenerated with the image's npm 11.19 (`npm ci` rejected the Windows lock: missing optional `@emnapi/*`); `backup.sh` reads `/dev/null` so `docker compose exec` cannot swallow a caller's stdin.
+- Next for the owner: console sign-in, then onboard Western World (slug `westernworldvisaservices`, owner as Admin), Vercel env `CRM_API_URL` + `NEXT_PUBLIC_CRM_TENANT`, redeploy, test (docs/staging-deploy.md steps 9-11). After the first console sign-in: remove `CRM_PLATFORM_ADMIN_*` from `deploy/.env` and restart the API.
+
 ### Open for the owner
 - Domain confirmed: softzenithlabs.com (owner, 16 Oct). Still open: Western World email usage and old-hosting login; WhatsApp sender number; approve C0–C5.
 
