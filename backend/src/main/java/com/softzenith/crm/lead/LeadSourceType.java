@@ -8,5 +8,7 @@ public enum LeadSourceType {
     WALK_IN,
     PHONE,
     REFERRAL,
-    OTHER
+    OTHER,
+    /** Loaded from a spreadsheet by an Admin (lead import); source_detail holds the label they gave, e.g. "Portal". */
+    IMPORT
 }

@@ -1,4 +1,4 @@
-# Handoff — 2026-11-03 (FIX: sign-in 400; ADMIN1: Admin-only handover; earlier GO0, AUTH1, TRUST1)
+# Handoff — 2026-11-03 (IMPORT1: lead import from a spreadsheet; earlier ADMIN1, GO0, AUTH1, TRUST1)
 
 Project rules, stack, conventions and settled decisions: **`CLAUDE.md`**. This file is the current state.
 
@@ -68,10 +68,66 @@ spec: menu items appear only when their module exists (no fake counts).
 | LS1 | Lead sheet (owner, 16 Oct; stopgap for the Western World handover): every new / repeat enquiry is also appended to the business's Google Sheet via an Apps Script web app (`leadsheet` module, tenant setting `leadSheet`, `deploy/google-sheet/lead-sheet.gs`, `deploy/lead-sheet.sh`, `docs/lead-sheet.md`) | done (branch `feat/lead-sheet`); owner sets up the sheet |
 | ADMIN1 | Admin-only business for the first handover (owner, 30 Oct): without `TEAM_AND_STUDENTS` the Admin works every lead; staff, roles, branches, assignment refused and hidden | code done, uncommitted, **not deployed: staging server unreachable** |
 | GO1 | Rehearse on staging (`westernworld-test`), then onboard Western World on live (slug `westernworldvisaservices`), real branches + staff + codes, website pointed at `aimdesk-api`, end-to-end check | todo |
+| IMPORT1 | Lead import from .xlsx / .csv (owner, 3 Nov; Western World's "Portal Data Pattern.xlsx"): Admin uploads, matches columns (+ service/country values), checks, imports; no alerts; V10 | done (this session), uncommitted |
 | BRAND1 | Product name **SoftCRM** (placeholder, owner 3 Nov; replaces AimDesk of 9 Oct until a final name) in the UI (title, login, shell); Java package rename not planned. Lowercase `aimdesk` server names (`/opt/aimdesk`, compose project, cron, planned domains) unchanged | todo |
 | later | Applications, offers, visa cases, IELTS/PTE, payments, reports (PRD Phases 4–5) | todo |
 
-## Session (latest): FIX — 400 on sign-in from localhost cookies (owner, 3 Nov)
+## Session (latest): IMPORT1 — lead import from a spreadsheet (owner, 3 Nov)
+
+Owner's decision: the business's Admin imports their own data (we can do it for them by signing in as their Admin);
+the column matching is a step of the upload screen, not a settings page.
+
+### What I built
+- **V10** `V10__lead_import.sql`: source type `IMPORT` (check constraint), `LEAD_IMPORT` for existing system Admin
+  roles (new tenants get it from the Admin template = all permissions), table `lead_import_columns` (the field a
+  business last chose per header, key = header lower-case letters/digits only).
+- Backend, all in the `lead` module: `SpreadsheetReader` (first sheet of .xlsx via fastexcel-reader, or .csv via
+  Commons CSV; `;` or `,`; UTF-8 else Windows-1252; header = first non-blank row; ≤5,000 rows, ≤50 columns; .xls refused
+  with "save as .xlsx"), `LeadImports` (suggest a field per column: saved choice, else a guess from the header; check or
+  import), `LeadService.importLead` (creates the lead + `CREATED` activity "Imported from <file>, row N"; **publishes no
+  event**, so no alerts, no student messages, no lead-sheet copy; a person with an open lead is left untouched and
+  reported "already in CRM"), `LeadImportController`: `POST /api/v1/lead-imports/read` (multipart) and
+  `POST /api/v1/lead-imports?dryRun=true|false`. Needs `LEAD_IMPORT` + `LEADS_CORE` (works for Admin-only businesses).
+  Rows are re-validated on import and saved 200 per transaction (a failing chunk is reported, the rest stays).
+  Multipart limit 5 MB (`application.yml`).
+- Row rules: name required and `NewLead.NAME_PATTERN`; mobile required and valid (libphonenumber, tenant region);
+  email optional but must look like one; lengths as the lead API; extra columns ≤10 KB; same phone+email twice in the
+  file → "Same person as row N". Unmatched columns default to EXTRA = kept in `custom_fields` under the header name
+  (e.g. Address).
+- Frontend: `/import` page (`app/(staff)/import/page.tsx`, helpers `lib/lead-import.ts`): upload → match columns (+ map
+  service/country values to the tenant's enquiry-form options; unambiguous ones pre-selected) → source label ("Portal")
+  → Check (nothing saved) → Import → counts, problem rows, "Rows not imported (.csv)". Menu "Import leads" under
+  Administration (permission only, no feature gate); "Import" button on Leads; `IMPORT` in the source filter; lead
+  detail now shows `customFields` in the Enquiry card. `lib/api-schema.d.ts` regenerated.
+- Info icon (tooltip) beside each column's field choice: what the field does (`FIELDS[].hint`, `columnHint` in
+  `lib/lead-import.ts`); a row-number column (Sr.No., S. No, #) says it isn't needed because every lead gets its own
+  CRM lead number (owner, 3 Nov).
+- New dependencies (justified): `org.dhatim:fastexcel-reader` 0.19.0 (streaming .xlsx reader, small; Apache POI is
+  ~15 MB and memory-hungry on the 2 GB server), `org.apache.commons:commons-csv` 1.14.1.
+- Tests: `LeadImportTests` (fixture `src/test/resources/imports/portal-data.xlsx`, shaped like the client's file),
+  `LeadImportsTest`, `SpreadsheetReaderTest`; `app/(staff)/import/page.test.tsx`. `test/api-mock.ts` no longer reads
+  multipart bodies (a jsdom File in Node's FormData never finishes streaming) and keeps non-JSON bodies as text.
+  `AppShell.test.tsx`: a solo Admin now sees Administration → Import leads.
+
+### Assumptions I made
+- "Portal" is a label, not a source type: imported leads are `IMPORT` with `source_detail` = the label typed (default
+  "Import"). If "Portal" is a specific lead source the owner wants in reports, it becomes its own source type.
+- Re-importing a person who has an open lead changes nothing on that lead (no repeat-enquiry count, no field merge).
+- Imported leads' created/last-enquiry time is the import time: the client's file has no enquiry date column.
+- Only the first sheet is read; no branch or assignee per row (Western World runs Admin-only).
+
+### What I could NOT verify
+- The client's real "Portal Data Pattern.xlsx" has **headers only, no rows**: read against a dev backend it matched all
+  7 columns correctly (Sr.No. → ignore, Address → extra) with 0 rows. A filled file has not been tried.
+- e2e (Playwright) not run and no e2e spec added; the page was not clicked through in a browser.
+- The running `.\dev` backend (8081) still runs the old code; restart it (`.\dev stop`, `.\dev`). V10 is already
+  applied to the local DB (a temporary backend on 8082 was started to regenerate the API types, then stopped).
+
+### Verification status
+- `./mvnw verify`: 288/288, coverage gate passes. `tsc`, lint (2 old warnings), Vitest 120/120, `npm run build` pass.
+- Git: uncommitted, on top of the earlier uncommitted work.
+
+## Session: FIX — 400 on sign-in from localhost cookies (owner, 3 Nov)
 
 - Symptom: `localhost:3000/platform/login` answered every sign-in with a bare 400. Cause: the browser sends all
   `localhost` cookies (other projects on other ports share them), the Next.js proxy forwards them, and Tomcat's 8 KB

@@ -34,6 +34,7 @@ import java.util.Comparator;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 /** All writes to leads go through here: every source, every status change, every assignment. */
@@ -103,6 +104,31 @@ public class LeadService {
         log.info("Lead {} created via {}{} (phone {})", number, d.sourceType(),
                 sourceDetail == null ? "" : " [" + sourceDetail + "]", Mask.phone(phone));
         return new IntakeResult(lead, true);
+    }
+
+    /**
+     * A lead from a spreadsheet import ({@link LeadImports}), already validated. Unlike {@link #intake} nothing is
+     * announced: no alerts, no messages to the person, no lead-sheet copy. A person who already has an open lead is
+     * left as they are (not counted as a repeat enquiry), and that lead is returned with {@code created} false.
+     */
+    IntakeResult importLead(NewLead d, String note) {
+        var tenant = currentTenant();
+        var phone = PhoneNumbers.toE164(d.phone(), tenant.getDefaultRegion());
+        leads.lockPerson(tenant.getId() + ":" + phone);
+        var existing = leads.findOpenByPerson(phone, Lead.normaliseEmail(d.email()));
+        if (existing.isPresent()) {
+            return new IntakeResult(existing.get(), false);
+        }
+        var number = "%s-%06d".formatted(tenant.getSettings().leadNumberPrefix(), counters.next(tenant.getId(), "lead"));
+        var lead = leads.save(new Lead(number, d, phone));
+        activities.save(new LeadActivity(lead.getId(), LeadActivity.Type.CREATED, null, d.sourceType().name(), note));
+        return new IntakeResult(lead, true);
+    }
+
+    /** Lead number of the person's open lead, if any (for an import check, which writes nothing). */
+    @Transactional(readOnly = true)
+    Optional<String> openLeadNumber(String phoneE164, String email) {
+        return leads.findOpenByPerson(phoneE164, Lead.normaliseEmail(email)).map(Lead::getLeadNumber);
     }
 
     /** A lead the signed-in staff member may see (their role's data scope); others are reported as not found. */

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useState, type ReactNode } from "react";
+import { Fragment, useState, type ReactNode } from "react";
 import useSWR from "swr";
 import { toast } from "sonner";
 import { ChevronRight, Mail, MessageCircle, Phone } from "lucide-react";
@@ -35,6 +35,8 @@ export default function LeadDetailPage() {
   if (!lead) return <p className="text-sm text-muted-foreground">Loading…</p>;
 
   const team = hasFeature(me, TEAM);
+  /** Details with no field of their own (e.g. an imported spreadsheet's Address column). */
+  const extras = Object.entries(lead.customFields ?? {}).filter(([, v]) => v !== null && v !== "");
   const canAssign = team && can(me, "LEAD_ASSIGN") && lead.status !== "CLOSED";
   // Leaving CLOSED is a reopen, which also needs LEAD_REOPEN (Admin); don't offer a button that can only fail.
   const canStatus = can(me, "LEAD_CHANGE_STATUS") && (lead.status !== "CLOSED" || can(me, "LEAD_REOPEN"));
@@ -77,11 +79,18 @@ export default function LeadDetailPage() {
 
       <div className="grid gap-6 xl:grid-cols-[1fr_380px]">
         <div className="space-y-6">
-          {(lead.message || lead.utmCampaign || lead.status === "CLOSED") && (
+          {(lead.message || lead.utmCampaign || lead.status === "CLOSED" || extras.length > 0) && (
             <Card>
               <CardHeader><CardTitle>Enquiry</CardTitle></CardHeader>
               <CardContent className="space-y-2 text-sm">
                 {lead.message && <p className="whitespace-pre-wrap">{lead.message}</p>}
+                {extras.length > 0 && (
+                  <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1">
+                    {extras.map(([k, v]) => (
+                      <Fragment key={k}><dt className="text-muted-foreground">{k}</dt><dd>{String(v)}</dd></Fragment>
+                    ))}
+                  </dl>
+                )}
                 {lead.utmCampaign && (
                   <p className="text-muted-foreground">Campaign: {[lead.utmSource, lead.utmMedium, lead.utmCampaign].filter(Boolean).join(" / ")}</p>
                 )}

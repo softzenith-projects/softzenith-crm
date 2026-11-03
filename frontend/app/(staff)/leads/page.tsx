@@ -5,8 +5,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 import useSWR from "swr";
 import { toast } from "sonner";
-import { ChevronLeft, ChevronRight, Plus, Search, UserRound } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { ChevronLeft, ChevronRight, FileSpreadsheet, Plus, Search, UserRound } from "lucide-react";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -23,7 +23,7 @@ type Status = NonNullable<Schemas["LeadResponse"]["status"]>;
 type Source = NonNullable<Schemas["LeadResponse"]["sourceType"]>;
 
 const STATUSES: Status[] = ["NEW", "CONTACTED", "ASSIGNED", "CLOSED"];
-const SOURCES: Source[] = ["WEBSITE_FORM", "META_LEAD_AD", "WHATSAPP", "WALK_IN", "PHONE", "REFERRAL", "OTHER"];
+const SOURCES: Source[] = ["WEBSITE_FORM", "META_LEAD_AD", "WHATSAPP", "WALK_IN", "PHONE", "REFERRAL", "OTHER", "IMPORT"];
 
 export default function LeadsPage() {
   return <Suspense><LeadsFromUrl /></Suspense>;
@@ -70,7 +70,10 @@ function Leads({ params }: { params: URLSearchParams }) {
       <PageHeader
         title="Leads"
         description={leads ? `${leads.totalElements} lead${leads.totalElements === 1 ? "" : "s"}` : "Every enquiry, from every source"}
-        actions={can(me, "LEAD_CREATE") && <Button onClick={() => setAdding(true)}><Plus /> Add lead</Button>}
+        actions={<>
+          {can(me, "LEAD_IMPORT") && <Link href="/import" className={buttonVariants({ variant: "outline" })}><FileSpreadsheet /> Import</Link>}
+          {can(me, "LEAD_CREATE") && <Button onClick={() => setAdding(true)}><Plus /> Add lead</Button>}
+        </>}
       />
 
       <Dialog open={adding} onOpenChange={(open) => (open ? setAdding(true) : closeAdd())}>

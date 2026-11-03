@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { createContext, useContext, useEffect, useState, type FormEvent, type ReactNode } from "react";
 import {
-  Building2, ChevronsUpDown, ExternalLink, KeyRound, LayoutDashboard, LogOut, Menu, Plus, Search, Users, UserRound, X,
+  Building2, ChevronsUpDown, ExternalLink, FileSpreadsheet, KeyRound, LayoutDashboard, LogOut, Menu, Plus, Search, Users, UserRound, X,
   type LucideIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -55,6 +55,7 @@ const NAV: { title?: string; items: NavItem[] }[] = [
     items: [
       { href: "/admin/staff", label: "Staff", icon: Users, permission: "USER_VIEW", feature: TEAM },
       { href: "/admin/branches", label: "Branches", icon: Building2, permission: "BRANCH_MANAGE", feature: TEAM },
+      { href: "/import", label: "Import leads", icon: FileSpreadsheet, permission: "LEAD_IMPORT" },
     ],
   },
 ];

@@ -30,7 +30,8 @@ describe("AppShell", () => {
     expect(menu()).not.toContain("Staff");
     expect(menu()).not.toContain("Branches");
     expect(screen.queryByText("All branches")).toBeNull();
-    expect(screen.queryByText("Administration")).toBeNull();
+    // Administration then holds only the lead import.
+    expect(menu()).toContain("Import leads");
   });
 
   it("lets an admin change their own sign-in code, which signs them out", async () => {

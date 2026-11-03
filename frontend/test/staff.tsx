@@ -11,7 +11,7 @@ type Me = Schemas["MeResponse"];
 const tenant = { id: "t-1", slug: "westernworld", name: "Western World" };
 const rohini = { id: "b-rohini", name: "Rohini" };
 const features = ["LEADS_CORE", "TEAM_AND_STUDENTS"];
-const adminPermissions = ["BRANCH_MANAGE", "LEAD_ASSIGN", "LEAD_CHANGE_STATUS", "LEAD_CREATE", "LEAD_EDIT", "LEAD_NEW_ALERT",
+const adminPermissions = ["BRANCH_MANAGE", "LEAD_ASSIGN", "LEAD_CHANGE_STATUS", "LEAD_CREATE", "LEAD_EDIT", "LEAD_IMPORT", "LEAD_NEW_ALERT",
   "LEAD_REOPEN", "LEAD_SOURCE_MANAGE", "LEAD_VIEW", "REPORTS_VIEW", "ROLE_MANAGE", "TENANT_SETTINGS_MANAGE",
   "USER_MANAGE", "USER_VIEW"];
 

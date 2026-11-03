@@ -16,6 +16,8 @@ public enum Permission {
     LEAD_REOPEN,
     /** Receive an email when a new lead arrives. */
     LEAD_NEW_ALERT,
+    /** Load existing enquiries from a spreadsheet (.xlsx / .csv). */
+    LEAD_IMPORT,
 
     // Reporting
     /** Lead dashboard: counts by status, source and assignee. */
