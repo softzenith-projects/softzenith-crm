@@ -2,8 +2,9 @@ import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { json, requests } from "@/test/api-mock";
-import { nav } from "@/test/navigation";
+import { nav, router } from "@/test/navigation";
 import { renderAsStaff, roles } from "@/test/staff";
+import AdminLayout from "./layout";
 import BranchesPage from "./branches/page";
 import StaffPage from "./staff/page";
 
@@ -30,6 +31,25 @@ function staffBackend(request: Request) {
 
 /** The table row of a person (their name also appears in the sidebar for the signed-in user). */
 const rowOf = (name: string) => screen.getAllByText(name).map((el) => el.closest("tr")).find(Boolean)!;
+
+describe("Admin pages without Team & branches", () => {
+  beforeEach(() => {
+    nav.path = "/admin/staff";
+  });
+
+  it("sends a typed-in address to the leads without loading staff or roles", async () => {
+    await renderAsStaff(<AdminLayout><StaffPage /></AdminLayout>, roles.soloAdmin, staffBackend);
+    await vi.waitFor(() => expect(router.replace).toHaveBeenCalledWith("/leads"));
+    expect(requests.some((r) => r.path.startsWith("/api/v1/users") || r.path.startsWith("/api/v1/roles"))).toBe(false);
+    expect(screen.queryByRole("heading", { name: "Staff" })).toBeNull();
+  });
+
+  it("opens as usual for a business with it", async () => {
+    await renderAsStaff(<AdminLayout><StaffPage /></AdminLayout>, roles.admin, staffBackend);
+    expect(await screen.findByText("Natasha Counsellor")).toBeInTheDocument();
+    expect(router.replace).not.toHaveBeenCalledWith("/leads");
+  });
+});
 
 describe("Staff admin", () => {
   beforeEach(() => {

@@ -1,4 +1,4 @@
-# AimDesk on one server: database, API, staff app, test inbox, and Caddy (HTTPS) in front.
+# SoftCRM on one server: database, API, staff app, test inbox, and Caddy (HTTPS) in front.
 # Settings and secrets come from deploy/.env (created by deploy/setup-env.sh, never committed).
 # Start / update: deploy/deploy.sh. Operations: deploy/README.md.
 name: aimdesk

@@ -30,6 +30,18 @@ describe("Dashboard", () => {
     expect(screen.getByText("Open & unassigned").closest("a")).toHaveAttribute("href", "/leads?unassigned=true");
   });
 
+  it("leaves out everything about a team for a business without Team & branches", async () => {
+    await renderAsStaff(<DashboardPage />, roles.soloAdmin, () => json(stats));
+
+    expect(await screen.findByText("Website form")).toBeInTheDocument();
+    expect(screen.getByText("Contacted", { selector: "p" }).closest("a")).toHaveAttribute("href", "/leads?status=CONTACTED");
+    expect(screen.getByText("Closed", { selector: "p" }).closest("a")).toHaveAttribute("href", "/leads?status=CLOSED");
+    for (const hidden of ["Team workload", "Open & unassigned", "Assigned", "All branches", "Natasha Counsellor"]) {
+      expect(screen.queryByText(hidden)).toBeNull();
+    }
+    expect(screen.queryByText(/counsellor/i)).toBeNull();
+  });
+
   it("asks the backend for the chosen period", async () => {
     await renderAsStaff(<DashboardPage />, roles.admin, () => json(stats));
     await screen.findByText("Natasha Counsellor");

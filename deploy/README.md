@@ -1,4 +1,4 @@
-# Running AimDesk on a server
+# Running SoftCRM on a server
 
 One server runs everything with Docker Compose: PostgreSQL, the API, the staff app, Mailpit (staging test inbox) and
 Caddy, which serves HTTPS for the three addresses in `deploy/.env`. The step-by-step plan for the first staging server

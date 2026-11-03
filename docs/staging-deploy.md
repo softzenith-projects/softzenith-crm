@@ -1,6 +1,6 @@
-# Staging deploy: website form → AimDesk staging database
+# Staging deploy: website form → SoftCRM staging database
 
-**Goal:** someone fills a form on `https://westernworld-website.vercel.app` → the lead is saved in the AimDesk
+**Goal:** someone fills a form on `https://westernworld-website.vercel.app` → the lead is saved in the SoftCRM
 **staging** database → you, signed in as Admin at `https://crm-staging.softzenithlabs.com`, see it.
 
 **Done when:** step 11 passes. Nothing else is in this plan. The full go-live plan is `docs/go-live.md`.
@@ -12,7 +12,7 @@
 | Hosting | **AWS EC2 free plan**: one `t3.small` (2 vCPU, 2 GB RAM + 2 GB swap, 30 GB disk), Ubuntu 24.04 x86, **Sydney** | Oracle had no free capacity in Mumbai. The AWS free plan gives US$100 credits for 183 days (until 16 Apr 2027); the free project is locked to Sydney |
 | Cost | US$0 out of pocket while credits last; about US$25/month is taken from the credits, so they last about **4 months** | Check Billing → Credits monthly. Before they end: upgrade AWS, or move to Hetzner / Oracle (the set-up is the same anywhere) |
 | Sign-in on staging | The **mobile + sign-in code** that is already built | No extra work, and the lead list is not open to the internet |
-| Email sign-in | Later (task AUTH2) | Proposal: AimDesk emails a one-time code itself through Google Workspace. Free, no Supabase |
+| Email sign-in | Later (task AUTH2) | Proposal: SoftCRM emails a one-time code itself through Google Workspace. Free, no Supabase |
 | Emails on staging | **Test inbox** (Mailpit) on the server, never real people | See the admin alert email without real email set-up |
 | Robot check, WhatsApp, Meta, real email | Not in this plan | Added after this works |
 
@@ -24,8 +24,8 @@ flowchart TB
     you(["You, as Admin, in a browser"])
     subgraph aws["AWS EC2 t3.small, Sydney (54.253.207.84)"]
         caddy["Caddy: HTTPS front door"]
-        web["AimDesk staff app + console"]
-        api["AimDesk API"]
+        web["SoftCRM staff app + console"]
+        api["SoftCRM API"]
         db[("PostgreSQL database")]
         mail["Mailpit: test inbox"]
     end
@@ -108,8 +108,9 @@ Everything is in the repo's `deploy/` folder (operations guide: `deploy/README.m
 3. **Onboard a business → Load file** → `docs/onboarding/westernworld.blueprint.json`.
 4. Change the **web address (slug)** from `westernworld` to **`westernworldvisaservices`** (must match the website;
    can't be changed later).
+   In the same step, check **Team & branches** under Features is **unticked** (Admin-only handover, owner 30 Oct).
 5. Branches: skip for now.
-6. Staff: **one row, you**: name, mobile, email, role **Admin** → **Generate** a sign-in code → save it.
+6. Staff: **one row**: name, mobile, email, role **Admin** → **Generate** a sign-in code → save it.
 7. **Review → Go live.**
 8. `https://crm-staging.softzenithlabs.com/login` → your mobile + code → an empty lead list.
 
@@ -127,7 +128,7 @@ Then **Deployments** → newest → **⋯ → Redeploy** (the values are read wh
 ### 11. Test (you, 5 min)
 
 1. `https://westernworld-website.vercel.app` → fill the home-page form with your own details → **Thank you** page.
-2. AimDesk → **Leads** → the lead is there (`WWV-000001`), source "Website form". **This plan is done.**
+2. SoftCRM → **Leads** → the lead is there (`WWV-000001`), source "Website form". **This plan is done.**
 3. Optional: the test inbox shows the welcome email and your new-lead alert.
 
 ## If it fails

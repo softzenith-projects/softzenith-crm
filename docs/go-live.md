@@ -1,9 +1,9 @@
-# Going live with AimDesk
+# Going live with SoftCRM
 
-How AimDesk (this CRM) gets from a laptop to a real server, in order. Written for a beginner: every step says **who**
+How SoftCRM (this CRM) gets from a laptop to a real server, in order. Written for a beginner: every step says **who**
 does it, **how long** it takes, **what it needs first**, exactly **where to click**, and **how to know it worked**.
 
-- **Part A** is the plan for **16 Oct 2026**: Western World's website live, its enquiries landing in the AimDesk
+- **Part A** is the plan for **16 Oct 2026**: Western World's website live, its enquiries landing in the SoftCRM
   **staging** server, Facebook / Instagram lead forms landing there too, and every new lead triggering WhatsApp + email
   to the student and to the Admin.
 - **Part B** is the longer plan (separate staging and live servers), updated for what Part A changes.
@@ -50,14 +50,14 @@ Start those first (step 1) so the waiting happens while everything else gets don
 ```mermaid
 flowchart TB
     student(["Student fills a form"])
-    admin(["Admin + staff open AimDesk"])
+    admin(["Admin + staff open SoftCRM"])
     site["Western World website form<br/>westernworldvisaservices.com"]
     fb["Facebook / Instagram<br/>lead form"]
     subgraph server["One AWS Lightsail server, Mumbai"]
         caddy["Caddy: the front door<br/>HTTPS for every address"]
         webapp["Website app"]
-        staff["AimDesk staff app<br/>aimdesk-staging.softzenithlabs.com"]
-        api["AimDesk API<br/>aimdesk-staging-api.softzenithlabs.com"]
+        staff["SoftCRM staff app<br/>aimdesk-staging.softzenithlabs.com"]
+        api["SoftCRM API<br/>aimdesk-staging-api.softzenithlabs.com"]
         db[("Database")]
     end
     gmail["Google Workspace<br/>sends the emails"]
@@ -87,7 +87,7 @@ sequenceDiagram
     autonumber
     participant S as Student
     participant W as Website / Meta lead form
-    participant A as AimDesk API
+    participant A as SoftCRM API
     participant D as Database
     participant M as Email (Google) + WhatsApp (Meta)
     participant Ad as Admin
@@ -102,7 +102,7 @@ sequenceDiagram
     A->>M: New-lead email + WhatsApp to the Admin (and Front desk)
     M->>S: Email + WhatsApp
     M->>Ad: Email + WhatsApp
-    Ad->>A: Opens the lead in AimDesk, assigns a counsellor
+    Ad->>A: Opens the lead in SoftCRM, assigns a counsellor
 ```
 
 Every message sent (or failed) is recorded on the lead's page, so you can always check what went out.
@@ -116,11 +116,11 @@ flowchart TD
     s0["0. Five-minute checks<br/>(you)"]
     s1["1. Start everything that needs<br/>Meta / Google approval (you)"]
     s2["2. Create the server<br/>(you)"]
-    s3["3. DNS for AimDesk addresses<br/>(you)"]
+    s3["3. DNS for SoftCRM addresses<br/>(you)"]
     s4["4. Robot check keys<br/>(you)"]
     s5["5. Write the missing code<br/>(Claude)"]
-    s6["6. Start AimDesk on the server<br/>(Claude + you)"]
-    s7["7. Set up Western World in AimDesk<br/>(you)"]
+    s6["6. Start SoftCRM on the server<br/>(Claude + you)"]
+    s7["7. Set up Western World in SoftCRM<br/>(you)"]
     s8["8. Website live + protect their email<br/>(you + Claude)"]
     s9["9. Switch on WhatsApp<br/>(you + Claude)"]
     s10["10. Facebook / Instagram leads<br/>(you + Claude)"]
@@ -147,12 +147,12 @@ flowchart TD
 
 | Item | Choice | Per month |
 |---|---|---|
-| Server (runs AimDesk, database **and** the website) | AWS Lightsail, 2 GB, Mumbai | **US$12** (check if Lightsail shows a "free for 3 months" offer on this plan) |
+| Server (runs SoftCRM, database **and** the website) | AWS Lightsail, 2 GB, Mumbai | **US$12** (check if Lightsail shows a "free for 3 months" offer on this plan) |
 | Daily server backup | Lightsail automatic snapshots | about US$1–3 |
 | Website hosting | On the same server | **Free** (Vercel's free plan is not allowed for business sites; Vercel Pro would be US$20) |
 | Email sending | Your existing Google Workspace on `softzenithlabs.com` (up to ~2,000 emails/day) | **Free** (already paid) |
 | WhatsApp | Meta WhatsApp Cloud API directly (no reseller like Interakt / AiSensy, which charge a monthly fee) | No monthly fee; Meta charges **per template message**, a small amount each. Check the India rates on Meta's [pricing page](https://developers.facebook.com/docs/whatsapp/pricing) |
-| Facebook / Instagram leads to AimDesk | Meta webhook | **Free** (you only pay for the ads themselves) |
+| Facebook / Instagram leads to SoftCRM | Meta webhook | **Free** (you only pay for the ads themselves) |
 | Robot check on forms | Cloudflare Turnstile | Free |
 | Domains | Already owned | No new cost |
 | **Total** | | **about US$13–15/month + WhatsApp messages** |
@@ -180,7 +180,7 @@ cancelled.
 
 | Check | Why | What we found (16 Oct) |
 |---|---|---|
-| **Which domain is AimDesk on?** | Every address below uses it | **Confirmed (owner, 16 Oct): `softzenithlabs.com`** (DNS at Hostinger, email on Google Workspace) |
+| **Which domain is SoftCRM on?** | Every address below uses it | **Confirmed (owner, 16 Oct): `softzenithlabs.com`** (DNS at Hostinger, email on Google Workspace) |
 | **Does Western World use `@westernworldvisaservices.com` email?** | Their email runs on the **same old server** as their old website. Moving the website without care **breaks their email** | Their mail record (MX) points at the old server `159.89.161.124`. Step 8.3 protects it |
 | **Where is their DNS edited?** | Changing the website's address happens there | **Not at Namecheap.** The domain's nameservers are `dns81/dns82.datanethostingsolutions.com`, so DNS is edited in the old hosting's control panel (usually cPanel → **Zone Editor**). Namecheap shows "Custom DNS" |
 | **Which phone number will send WhatsApp?** | Meta needs one number for the business | It must **not** be active on the WhatsApp or WhatsApp Business app (delete the WhatsApp account on it first, or use a new SIM). Until it is approved, Meta's free **test number** works for up to 5 phones |
@@ -202,13 +202,13 @@ Do this **first**. Meta and Google may take minutes to hours to approve things; 
    accounts**: their Instagram is listed.
 
 > Why Western World's own portfolio: the app below then reads leads from **its own** Page, which Meta allows without a
-> long app review. When a second business joins AimDesk, SoftZenith will need its own reviewed Meta app (later).
+> long app review. When a second business joins SoftCRM, SoftZenith will need its own reviewed Meta app (later).
 
 #### 1.2 Meta developer app (one app for both WhatsApp and lead forms)
 
 1. Open [developers.facebook.com](https://developers.facebook.com) → **Get started** (register as a developer if asked;
    it needs your phone).
-2. **My Apps → Create app** → use case **Other** → app type **Business** → name `AimDesk Western World` → contact
+2. **My Apps → Create app** → use case **Other** → app type **Business** → name `SoftCRM Western World` → contact
    email → business portfolio: **Western World Visa Services** → Create.
 3. On the app's dashboard, **Add product**: **WhatsApp** (Set up) and **Webhooks** (Set up).
 
@@ -228,26 +228,26 @@ Do this **first**. Meta and Google may take minutes to hours to approve things; 
 
 WhatsApp only lets a business **start** a conversation with a pre-approved message ("template"). Create these in
 WhatsApp Manager → **Message templates → Create template**, category **Utility**, language **English**. The
-`{{1}}`, `{{2}}`… are filled in by AimDesk. Meta asks for a sample value for each; use the samples shown.
+`{{1}}`, `{{2}}`… are filled in by SoftCRM. Meta asks for a sample value for each; use the samples shown.
 
 | Template name | Text (copy exactly) | Samples | Sent to |
 |---|---|---|---|
 | `lead_welcome` | `Hi {{1}}, thank you for contacting {{2}}! We have received your enquiry (ref {{3}}) and our team will reach out to you shortly.` | Riya · Western World Visa Services · WWV-000001 | The student, on a new lead |
-| `new_lead_alert` | `New enquiry for {{1}}: {{2}} ({{3}}), interested in {{4}}. Lead {{5}}. Please open AimDesk to assign it.` | Western World Visa Services · Riya Sharma · +919876543210 · Study Visa Canada · WWV-000001 | Admin + Front desk, on a new lead |
+| `new_lead_alert` | `New enquiry for {{1}}: {{2}} ({{3}}), interested in {{4}}. Lead {{5}}. Please open SoftCRM to assign it.` | Western World Visa Services · Riya Sharma · +919876543210 · Study Visa Canada · WWV-000001 | Admin + Front desk, on a new lead |
 | `repeat_enquiry_ack` | `Hi {{1}}, thanks for contacting {{2}} again! We have added your message to your enquiry (ref {{3}}). Our team will get in touch with you shortly.` | Riya · Western World Visa Services · WWV-000001 | The student, when they enquire again |
 
 Approval usually takes minutes, sometimes up to a day. If Meta rejects one or moves it to "Marketing", tell Claude
 the reason; the wording can be adjusted. (Status-change messages, e.g. "your counsellor is…", are left for later; until
-their templates exist, AimDesk records them as "skipped" and sends them by email only.)
+their templates exist, SoftCRM records them as "skipped" and sends them by email only.)
 
 #### 1.5 Email sending through Google Workspace (free)
 
-AimDesk sends as **`noreply@softzenithlabs.com`**, shown with the business name ("Western World Visa Services").
+SoftCRM sends as **`noreply@softzenithlabs.com`**, shown with the business name ("Western World Visa Services").
 
 1. [admin.google.com](https://admin.google.com) → **Directory → Users** → your user → **Add alternate emails** →
    `noreply` → Save. (An alias is free; no new user needed.)
 2. On that same user: turn on **2-Step Verification** ([myaccount.google.com/security](https://myaccount.google.com/security)).
-3. [myaccount.google.com/apppasswords](https://myaccount.google.com/apppasswords) → name `AimDesk` → Create → copy the
+3. [myaccount.google.com/apppasswords](https://myaccount.google.com/apppasswords) → name `SoftCRM` → Create → copy the
    16-letter password into your password manager. (If the page says app passwords are not available: Admin console →
    Security → Less secure apps / app passwords must be allowed for the user. If you cannot enable it, tell Claude; the
    free fallback is a Brevo account, 300 emails/day.)
@@ -287,7 +287,7 @@ In Western World's DNS panel (old hosting, see step 0), set the **TTL** of the `
 **Done when:** the instance shows **Running** with your static IP. Tell Claude the IP; Claude connects with the `.pem`
 file (you approve each command).
 
-### Step 3. DNS for the AimDesk addresses (you, 10 minutes + a few minutes waiting)
+### Step 3. DNS for the SoftCRM addresses (you, 10 minutes + a few minutes waiting)
 
 Needs: the static IP from step 2.
 
@@ -306,7 +306,7 @@ Hostinger → **Domains → softzenithlabs.com → DNS / Nameservers → Manage 
 
 1. [dash.cloudflare.com](https://dash.cloudflare.com) → sign up (free; your domains do **not** need to move to
    Cloudflare).
-2. **Turnstile → Add widget**: name `Western World + AimDesk`, hostnames:
+2. **Turnstile → Add widget**: name `Western World + SoftCRM`, hostnames:
    `westernworldvisaservices.com`, `www.westernworldvisaservices.com`, `aimdesk-staging.softzenithlabs.com`,
    `ww-preview.softzenithlabs.com`. Mode **Managed** → Create.
 3. Copy the **Site key** and the **Secret key** to your password manager.
@@ -325,7 +325,7 @@ Hostinger → **Domains → softzenithlabs.com → DNS / Nameservers → Manage 
 Order Claude works in: **C0 → C1 → C5 → C2 + C3 → C4**, with tests for each. Rough effort: C1 + C5 a few hours,
 C2 + C3 about half a day, C4 about half a day. Part of this can slip to tomorrow; steps 6–8 only need C0, C1 and C5.
 
-### Step 6. Start AimDesk on the server (Claude + you, 45 minutes)
+### Step 6. Start SoftCRM on the server (Claude + you, 45 minutes)
 
 Needs: steps 2, 3 (DNS working), 4, C0 + C1, and the email app password from 1.5.
 
@@ -353,7 +353,7 @@ Needs: steps 2, 3 (DNS working), 4, C0 + C1, and the email app password from 1.5
 5. Open `https://aimdesk-staging.softzenithlabs.com/platform` and sign in to the console. Then Claude removes the two
    `CRM_PLATFORM_ADMIN_*` lines and restarts (the account stays; the password is no longer stored in the file).
 
-### Step 7. Set up Western World in AimDesk (you, 30 minutes)
+### Step 7. Set up Western World in SoftCRM (you, 30 minutes)
 
 Needs: step 6 and Western World's information.
 
@@ -380,7 +380,7 @@ Needs: steps 4, 6, 7 and C5.
 (The site key is built into the website, so it must be set **before** the build.)
 
 **8.2 Preview it (you).** Open `https://ww-preview.softzenithlabs.com`. Click around, send one enquiry with your
-details, check it lands in AimDesk. Nothing about the real domain has changed yet.
+details, check it lands in SoftCRM. Nothing about the real domain has changed yet.
 
 **8.3 Protect Western World's email (you, in their DNS panel, before the switch).** Their email server is the old
 website server. The mail record today says "deliver mail to `westernworldvisaservices.com`", so if the website
@@ -421,7 +421,7 @@ Needs: templates approved (1.4), C2 + C3 deployed, step 7.
 1. **A permanent access token** (the one on the API Setup page expires in 24 hours):
    business.facebook.com → **Settings → Users → System users → Add** → name `aimdesk`, role **Admin** →
    **Assign assets**: the app (full control), the WhatsApp account (full control), Western World's Page (full
-   control) → **Generate new token** → app `AimDesk Western World` → expiry **Never** → permissions:
+   control) → **Generate new token** → app `SoftCRM Western World` → expiry **Never** → permissions:
    `whatsapp_business_messaging`, `whatsapp_business_management`, `leads_retrieval`, `pages_show_list`,
    `pages_read_engagement`, `pages_manage_metadata`, `ads_management` → Generate → copy to your password manager.
    (The lead-form permissions are for step 10; one token does both.)
@@ -437,7 +437,7 @@ Needs: templates approved (1.4), C2 + C3 deployed, step 7.
 > Unverified businesses can message up to 250 different people a day; Meta business verification (Business settings
 > → Security Centre) raises that. Do it this week.
 
-### Step 10. Facebook / Instagram lead forms → AimDesk (you + Claude, 45 minutes)
+### Step 10. Facebook / Instagram lead forms → SoftCRM (you + Claude, 45 minutes)
 
 Needs: C4 deployed, the privacy page live (step 8), the token from step 9.
 
@@ -451,11 +451,11 @@ Needs: C4 deployed, the privacy page live (step 8), the token from step 9.
    leads made by people who have a role in the app, not real ones.
 4. **Connect the Page:** give Claude Western World's **Page ID** (Page → About → Page transparency, or Business
    settings → Pages). Claude subscribes the Page to the app (one call to Meta) and saves the Page ID in Western World's
-   settings in AimDesk.
+   settings in SoftCRM.
 5. **Allow the app to read leads:** Meta Business Suite → **All tools → Lead ads forms → CRM setup / Leads access**:
-   if access is restricted, add the app `AimDesk Western World` (and the system user `aimdesk`).
+   if access is restricted, add the app `SoftCRM Western World` (and the system user `aimdesk`).
 6. **Test:** [Lead Ads Testing Tool](https://developers.facebook.com/tools/lead-ads-testing) → choose the Page and a
-   form → **Create lead**. Within a minute it appears in AimDesk with source **Meta lead ad**, and the WhatsApp +
+   form → **Create lead**. Within a minute it appears in SoftCRM with source **Meta lead ad**, and the WhatsApp +
    email go out. (Delete the test lead in the tool before testing again.)
 7. **Instagram:** Instagram lead ads use the same Page's lead forms, so nothing extra is needed once Instagram is
    linked to the Page (step 0).
@@ -464,7 +464,7 @@ Needs: C4 deployed, the privacy page live (step 8), the token from step 9.
 
 > If Meta refuses to give the lead details with a message about "Advanced Access" or "App Review", the app needs a Meta
 > review (a few days: a screen recording and a short explanation, which Claude can draft). Until then, staff can
-> download leads from Meta Business Suite → **Leads Center** and add them in AimDesk as manual leads.
+> download leads from Meta Business Suite → **Leads Center** and add them in SoftCRM as manual leads.
 
 ### Step 11. Final end-to-end test (you, 20 minutes)
 
@@ -472,7 +472,7 @@ Use your own details. Tick every row.
 
 | # | Do | Expect |
 |---|---|---|
-| 1 | Fill the home-page form on `westernworldvisaservices.com` | "Thank you" page; lead in AimDesk within seconds, source "Website form" |
+| 1 | Fill the home-page form on `westernworldvisaservices.com` | "Thank you" page; lead in SoftCRM within seconds, source "Website form" |
 | 2 | Check your phone and inbox | Welcome WhatsApp + welcome email (check spam the first time; mark "Not spam") |
 | 3 | Check the Admin's phone and inbox | New-lead WhatsApp + email with a link to the lead |
 | 4 | Fill the contact-page form again with the **same mobile** | Same lead moves to the top (no duplicate); "thanks again" WhatsApp |
@@ -518,7 +518,7 @@ Use your own details. Tick every row.
 
 ## The big picture
 
-There will be **three places** AimDesk runs:
+There will be **three places** SoftCRM runs:
 
 | Place | What it is for | Address | Real data? | Sends real messages? |
 |---|---|---|---|---|
@@ -564,7 +564,7 @@ Steps 1–4 are **done by Part A** (with Google Workspace instead of SES for ema
 
 ### Step 1. Decide (you): done 16 Oct 2026
 
-AWS (Mumbai) for hosting, AimDesk on `softzenithlabs.com`. Staging on its own small server: if a test breaks or
+AWS (Mumbai) for hosting, SoftCRM on `softzenithlabs.com`. Staging on its own small server: if a test breaks or
 slows staging, live is not affected.
 
 ### Step 2. Accounts (you): done in Part A
@@ -580,7 +580,7 @@ Still to add for live: nightly database backup copied to S3 (off the server) and
 
 ### Step 5. Email for real (you + Claude, task MAIL1)
 
-Google Workspace (Part A) allows about 2,000 emails a day. When AimDesk serves more businesses, move to Amazon SES:
+Google Workspace (Part A) allows about 2,000 emails a day. When SoftCRM serves more businesses, move to Amazon SES:
 open SES in AWS, add the DNS records it shows, request "production access" (AWS answers within about a day). Staging
 then goes back to Mailpit so it never emails real people again.
 
@@ -614,7 +614,7 @@ Collect this from every new business (Western World first). The full list with e
 | Staff list | Name, mobile (with WhatsApp), email, role, branch | Mobile = how each person signs in and gets WhatsApp alerts; at least one Admin |
 | Who gets new-lead alerts | Admin + Front desk (default) | The alert emails and WhatsApp |
 | OK on message wording | Welcome email, WhatsApp templates, assignment email | These go to their students |
-| Their website | Hosted where, which domain, who has the DNS login | So their forms can send enquiries to AimDesk |
+| Their website | Hosted where, which domain, who has the DNS login | So their forms can send enquiries to SoftCRM |
 | Their email | Which provider runs `@their-domain` mail | So moving the website does not break it |
 | Meta | Business portfolio, Facebook Page, Instagram, a WhatsApp number | WhatsApp messages and lead ads |
 
@@ -650,7 +650,7 @@ at `aimdesk-staging.softzenithlabs.com/enquiry/<slug>`, and it calls the same AP
 | WhatsApp | Staging uses the "demo" sender again (recorded, not sent), or Meta's test number with your own phones |
 | A settings change for that business | Change it on the test copy first, check, then do the same on live |
 
-**Rule of thumb:** a new AimDesk version, or a new setting for a business, is tried on staging first. Live is only
+**Rule of thumb:** a new SoftCRM version, or a new setting for a business, is tried on staging first. Live is only
 changed after it works there.
 
 ---
@@ -672,7 +672,7 @@ Prices change; check them when creating the accounts.
 
 ## Not covered yet (later)
 
-- Email sign-in for staff (AUTH2); WhatsApp **inbound** (students replying, chat in AimDesk).
+- Email sign-in for staff (AUTH2); WhatsApp **inbound** (students replying, chat in SoftCRM).
 - A Meta app owned by SoftZenith with App Review, for businesses after Western World.
 - Automatic deploys on every merge (first deploys run by one command; automation comes once this works).
-- Showing the name "AimDesk" in the app itself (task BRAND1, a small UI change).
+- Showing the name "SoftCRM" in the app itself (task BRAND1, a small UI change).

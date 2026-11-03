@@ -85,6 +85,16 @@ class BlueprintValidatorTest {
     }
 
     @Test
+    void withoutTeamAndBranchesOnlyAdminsCanBeAdded() {
+        var adminsOnly = new OnboardingSettings("WWV", null, null, null, null, null, null, Set.of("LEADS_CORE"));
+        assertThat(fields(new TenantBlueprint(valid().business(), adminsOnly, null, ADMIN_ONLY))).isEmpty();
+
+        var withCounsellor = new TenantBlueprint(valid().business(), adminsOnly, null,
+                List.of(person("A", "9876543210", "Admin", null), person("Priya", "9876543211", "Counsellor", null)));
+        assertThat(fields(withCounsellor)).containsExactly("staff[1].role");
+    }
+
+    @Test
     void branchesNeedUniqueNames() {
         var bp = new TenantBlueprint(valid().business(), null,
                 List.of(new OnboardingBranch("Rohtak", null), new OnboardingBranch("ROHTAK", null), new OnboardingBranch(" ", null)),

@@ -3,7 +3,7 @@
 import { useState, type FormEvent } from "react";
 import useSWR from "swr";
 import { toast } from "sonner";
-import { Copy, KeyRound, MoreHorizontal, Plus } from "lucide-react";
+import { Copy, MoreHorizontal, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -13,8 +13,9 @@ import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { can, useMe } from "@/components/AppShell";
 import { ErrorText, Field, Initials, PageHeader, StatusBadge } from "@/components/common";
+import { SigninCodeField } from "@/components/SigninCodeField";
 import { api, errorMessage, unwrap, type Schemas } from "@/lib/api";
-import { generateSigninCode, signinCodeProblem } from "@/lib/signin-code";
+import { signinCodeProblem } from "@/lib/signin-code";
 
 type Staff = Schemas["StaffResponse"];
 
@@ -259,15 +260,7 @@ function SigninCodeForm({ staff, onSaved, onDone }: { staff: Staff; onSaved: () 
         </DialogDescription>
       </DialogHeader>
       <form onSubmit={submit} className="space-y-4">
-        <Field label="Sign-in code (6 to 8 digits)">
-          <div className="flex gap-2">
-            <Input inputMode="numeric" autoComplete="off" required maxLength={8} value={code} autoFocus
-                   onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))} className="font-mono tracking-widest" />
-            <Button type="button" variant="outline" onClick={() => { setCode(generateSigninCode()); setError(""); }}>
-              <KeyRound /> Generate
-            </Button>
-          </div>
-        </Field>
+        <SigninCodeField code={code} onChange={(c) => { setCode(c); setError(""); }} />
         <div className="flex items-center justify-end gap-3">
           <ErrorText>{error}</ErrorText>
           <Button type="submit">Save code</Button>

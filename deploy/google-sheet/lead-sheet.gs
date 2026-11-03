@@ -1,10 +1,10 @@
 /**
- * AimDesk → Google Sheet. Receives each enquiry from AimDesk and adds it as a row to the first tab.
+ * SoftCRM → Google Sheet. Receives each enquiry from SoftCRM and adds it as a row to the first tab.
  *
  * Set-up (docs/lead-sheet.md):
  *  1. In the sheet: Extensions → Apps Script, replace everything with this file, save.
  *  2. Deploy → New deployment → Web app: Execute as "Me", Who has access "Anyone" → Deploy → copy the Web app URL.
- *  3. Project Settings (gear) → Script properties → add SECRET = the secret AimDesk gives you.
+ *  3. Project Settings (gear) → Script properties → add SECRET = the secret SoftCRM gives you.
  */
 
 function doPost(e) {
@@ -28,7 +28,7 @@ function doPost(e) {
       sheet.getRange(1, 1, 1, body.columns.length).setFontWeight('bold');
       sheet.setFrozenRows(1);
     }
-    // AimDesk may send the same enquiry twice after a retry: skip it if its Ref is already in the sheet.
+    // SoftCRM may send the same enquiry twice after a retry: skip it if its Ref is already in the sheet.
     var refColumn = body.columns.indexOf('Ref') + 1;
     if (refColumn > 0 && sheet.getLastRow() > 1) {
       var found = sheet.getRange(2, refColumn, sheet.getLastRow() - 1, 1)

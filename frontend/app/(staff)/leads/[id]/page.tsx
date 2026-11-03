@@ -10,7 +10,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
-import { can, useMe } from "@/components/AppShell";
+import { TEAM, can, hasFeature, useMe } from "@/components/AppShell";
 import { ErrorText, Field, Initials, StatusBadge, humanize } from "@/components/common";
 import { api, errorMessage, formatDate, unwrap, type Schemas } from "@/lib/api";
 
@@ -34,7 +34,8 @@ export default function LeadDetailPage() {
   if (error) return <ErrorText>{error.message}</ErrorText>;
   if (!lead) return <p className="text-sm text-muted-foreground">Loading…</p>;
 
-  const canAssign = can(me, "LEAD_ASSIGN") && lead.status !== "CLOSED";
+  const team = hasFeature(me, TEAM);
+  const canAssign = team && can(me, "LEAD_ASSIGN") && lead.status !== "CLOSED";
   // Leaving CLOSED is a reopen, which also needs LEAD_REOPEN (Admin); don't offer a button that can only fail.
   const canStatus = can(me, "LEAD_CHANGE_STATUS") && (lead.status !== "CLOSED" || can(me, "LEAD_REOPEN"));
 
@@ -63,9 +64,9 @@ export default function LeadDetailPage() {
           </div>
           <a href={`tel:${lead.phone}`} className={buttonVariants({ variant: "outline", size: "lg" })}><Phone /> Call</a>
         </div>
-        <dl className="grid grid-cols-2 border-t md:grid-cols-5 [&>div]:border-r [&>div]:px-6 [&>div]:py-4 [&>div:last-child]:border-r-0">
-          <Info label="Assigned to">{lead.assignedTo?.name ?? <span className="text-amber-600">Unassigned</span>}</Info>
-          <Info label="Branch">{lead.branch?.name ?? "—"}</Info>
+        <dl className={`grid grid-cols-2 border-t ${team ? "md:grid-cols-5" : "md:grid-cols-3"} [&>div]:border-r [&>div]:px-6 [&>div]:py-4 [&>div:last-child]:border-r-0`}>
+          {team && <Info label="Assigned to">{lead.assignedTo?.name ?? <span className="text-amber-600">Unassigned</span>}</Info>}
+          {team && <Info label="Branch">{lead.branch?.name ?? "—"}</Info>}
           <Info label="Interested in">{lead.serviceInterest ?? "—"}</Info>
           <Info label="Source">{[humanize(lead.sourceType), lead.sourceDetail].filter(Boolean).join(" · ")}</Info>
           <Info label={(lead.enquiryCount ?? 1) > 1 ? `Enquired ${lead.enquiryCount}×, last` : "Enquired"}>

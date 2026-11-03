@@ -58,7 +58,7 @@ final class BlueprintValidator {
         var timezone = timezone(business.timezone());
         var settings = settings(bp.settings(), name);
         var branches = branches(bp.branches());
-        var staff = staff(bp.staff(), region, branches);
+        var staff = staff(bp.staff(), region, branches, settings.enabledFeatures().contains(FeatureGate.TEAM_AND_STUDENTS));
         return new Validated(name, slug, region, timezone, settings, branches, staff, List.copyOf(problems), List.copyOf(warnings));
     }
 
@@ -154,7 +154,7 @@ final class BlueprintValidator {
         return result;
     }
 
-    private List<NewStaff> staff(List<TenantBlueprint.OnboardingStaff> raw, String region, List<NewBranch> branches) {
+    private List<NewStaff> staff(List<TenantBlueprint.OnboardingStaff> raw, String region, List<NewBranch> branches, boolean team) {
         var rows = raw == null ? List.<TenantBlueprint.OnboardingStaff>of() : raw;
         var branchNames = new HashMap<String, String>();
         branches.stream().filter(b -> b.name() != null).forEach(b -> branchNames.put(b.name().toLowerCase(Locale.ROOT), b.name()));
@@ -198,6 +198,8 @@ final class BlueprintValidator {
                 problem(field + ".role", label + ": role must be Admin, Branch Manager, Counsellor or Receptionist");
             } else if (role.equals(DefaultRoles.ADMIN)) {
                 admins++;
+            } else if (!team) {
+                problem(field + ".role", label + ": only Admins can be added while Team & branches is off");
             }
 
             String branch = null;

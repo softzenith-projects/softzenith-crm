@@ -1,4 +1,4 @@
-# Handoff — 2026-10-16 (GO0 plan: Western World live on staging today; earlier AUTH1, TRUST1)
+# Handoff — 2026-11-03 (FIX: sign-in 400; ADMIN1: Admin-only handover; earlier GO0, AUTH1, TRUST1)
 
 Project rules, stack, conventions and settled decisions: **`CLAUDE.md`**. This file is the current state.
 
@@ -66,11 +66,68 @@ spec: menu items appear only when their module exists (no fake counts).
 | MAIL1 | Amazon SES: domain verification (SPF/DKIM/DMARC), production access | todo (needs AWS + DNS) |
 | GO0 | Western World live on the **staging** server today (owner, 16 Oct): website + form → staging, Google Workspace SMTP, WhatsApp (Meta Cloud API templates) to student + Admin, Meta lead ads webhook. Beginner runbook: `docs/go-live.md` Part A. Code still needed: C0 commit, C1 packaging, C5 privacy page + consent line, C2 real WhatsApp sender, C3 Admin WhatsApp alert, C4 Meta lead ads webhook | plan written; code todo |
 | LS1 | Lead sheet (owner, 16 Oct; stopgap for the Western World handover): every new / repeat enquiry is also appended to the business's Google Sheet via an Apps Script web app (`leadsheet` module, tenant setting `leadSheet`, `deploy/google-sheet/lead-sheet.gs`, `deploy/lead-sheet.sh`, `docs/lead-sheet.md`) | done (branch `feat/lead-sheet`); owner sets up the sheet |
+| ADMIN1 | Admin-only business for the first handover (owner, 30 Oct): without `TEAM_AND_STUDENTS` the Admin works every lead; staff, roles, branches, assignment refused and hidden | code done, uncommitted, **not deployed: staging server unreachable** |
 | GO1 | Rehearse on staging (`westernworld-test`), then onboard Western World on live (slug `westernworldvisaservices`), real branches + staff + codes, website pointed at `aimdesk-api`, end-to-end check | todo |
-| BRAND1 | Product name **AimDesk** (owner, 9 Oct) in the UI (title, login, shell); Java package rename not planned | todo |
+| BRAND1 | Product name **SoftCRM** (placeholder, owner 3 Nov; replaces AimDesk of 9 Oct until a final name) in the UI (title, login, shell); Java package rename not planned. Lowercase `aimdesk` server names (`/opt/aimdesk`, compose project, cron, planned domains) unchanged | todo |
 | later | Applications, offers, visa cases, IELTS/PTE, payments, reports (PRD Phases 4–5) | todo |
 
-## Session (latest): GO0 — go-live runbook for today (owner, 16 Oct)
+## Session (latest): FIX — 400 on sign-in from localhost cookies (owner, 3 Nov)
+
+- Symptom: `localhost:3000/platform/login` answered every sign-in with a bare 400. Cause: the browser sends all
+  `localhost` cookies (other projects on other ports share them), the Next.js proxy forwards them, and Tomcat's 8 KB
+  header limit rejected the request before Spring (logged once as `Request header is too large`, then silently).
+- Fix: `server.max-http-request-header-size: 64KB` in `application.yml`. Checked by hand: login with a 9 KB cookie
+  through `:3000` now 200 (was 400). No automated test added; suites not re-run (config-only change).
+- Git: uncommitted, on top of the ADMIN1 work below.
+- Owner wants Western World to run with **Admin + Receptionist only**, assigning leads to each other (no Branch
+  Manager or Counsellor for now). Done in the **local DB only**: `roles.assignable = true` for ADMIN and RECEPTIONIST
+  (SQL, no API edits roles), staff BM and C disabled through the Staff API. Not repeatable on staging yet: the
+  blueprint cannot override a role's `assignable` flag or permissions (open for the owner). Receptionist has no
+  `LEAD_CHANGE_STATUS`, so it cannot move a lead it is assigned (also open).
+- Client setup form: `docs/onboarding/business-intake.md` (source; appendix maps each answer to where it goes and
+  what is not built) and `business-intake.html`, published at https://claude.ai/artifact/3bRSdxqSwbxqNnoDHnwFmb
+  (private until the owner shares it). Fillable. Owner's choice (3 Nov): the client sends the file the form makes, not
+  an Excel. **Download setup file** saves `<slug>.blueprint.json` for the console's Load file, with an extra `intake`
+  object (contact, brand, alerts, technical) that the backend ignores (checked: preview 200, ready). Downloads are
+  blocked inside claude.ai, so send clients the `.html`; "Copy answers" is the fallback. It asks for logo, colours, tagline, reply-to and CRM address although none is built yet (A2).
+- Product name is now **SoftCRM** (placeholder, owner 3 Nov) until a final name: every "AimDesk" in docs, comments,
+  Dockerfiles, the sheet script and the setup form replaced. Kept on purpose: lowercase `aimdesk` (server folder
+  `/opt/aimdesk`, compose project `name: aimdesk` which names the DB volume, images, cron file, planned
+  `aimdesk[-staging][-api]` domains, Meta system user). Renaming those needs a server move; do it with the final name.
+- Also seen: stopping a hung `.\dev` from a non-console shell killed Postgres uncleanly; it recovered on start.
+  `pg_ctl -w start | Out-Null` in `dev.ps1` hangs when run without a console (the pipe stays open); fine in a terminal.
+
+## Session: ADMIN1 — Admin-only handover (owner, 30 Oct)
+
+### What I built
+- Backend: `LeadController.stats` and `changeStatus` moved from `TEAM_AND_STUDENTS` to `LEADS_CORE` (the question G1 left open). `GET /users`, `/users/{id}` and `/roles` now also need `TEAM_AND_STUDENTS`. `PUT /users/{id}/signin-code` stays ungated so a lone Admin can change their code. `/api/v1/me` returns `features` (`FeatureGateService.enabledFeatures`). `BlueprintValidator` refuses non-Admin staff when the feature is off.
+- Frontend: `hasFeature(me, TEAM)` in `AppShell`. Without it: no Staff/Branches menu or Branch footer; `app/(staff)/admin/layout.tsx` sends typed-in addresses to `/leads`; no Assign box, Assigned to, Branch or Unassigned filter; dashboard shows New / Contacted / Closed with no team workload. `LeadForm` hides Branch when the business has none (any plan). User menu: "Change my sign-in code" for `USER_MANAGE` (`MySigninCodeForm`, signs out on save because the code change ends the session; `SigninCodeField` shared with the Staff page).
+- `docs/onboarding/westernworld.blueprint.json`: features `LEADS_CORE` only. Docs: CLAUDE.md, `docs/onboarding.md`, `docs/staging-deploy.md` step 9, `docs/generate_flows.py` → `docs/flows.md`.
+- Tests: `FeatureGateEnforcementTests`, `BlueprintValidatorTest`, `MeControllerTests`, page tests, new `e2e/admin-only-business.spec.ts`.
+
+### Assumptions I made
+- "Team & branches" off is the Admin-only switch, rather than a new gate: it already blocked staff, branches and assignment.
+- Leads keep any branch the website sends; only the display is hidden.
+- If a business with `ASSIGNED` leads is later switched off, those leads keep their badge but the status filter and pipeline leave that status out. Not built for, because nothing turns a team off today.
+
+### What I could NOT verify
+- Nothing is deployed. On 30 Oct `54.253.207.84` timed out on 22, 80 and 443 while DNS and GitHub worked, so the server looks stopped; no AWS access from this machine. Whether Western World is already onboarded there is unknown. If it is, it still has `TEAM_AND_STUDENTS` and needs the update in `docs/onboarding.md`.
+- Sign-in with mobile + code on the Admin-only tenant in a browser: e2e uses dev login. `signin-code.spec.ts` covers the code flow on a normal tenant.
+- Staging email goes to Mailpit, so the client gets no real new-lead alerts or student emails there; WhatsApp is demo only and shows a "Demo" badge under Messages sent.
+
+### Verification status
+- `./mvnw verify`: 212/212, coverage gate passes. `tsc`, lint (2 old warnings), Vitest 112/112, `npm run build` pass.
+- `npm run e2e`: 8 pass, 1 fails: `platform-onboarding.spec.ts` at the Businesses list after Go live. **Existing bug**: it fails the same way on the code before this change. The business is created and shows after a reload, but the list does not refresh. Not fixed.
+- `phase1-enquiry-to-counsellor.spec.ts` was already outdated: the closing reason appears twice on the page. Its locator now targets the Enquiry card line.
+- Port 3000 on the owner's machine was used by another project (Untiered), so e2e ran with a temporary config on 3100, since deleted.
+
+### Git status
+- Uncommitted on `feat/lead-sheet` (on top of `28a2eea`), which contains `feat/staging-deploy`. Commit on a new `feat/admin-only` branch from here, not from `develop`: `develop` has neither the deploy files nor the lead sheet.
+
+## Next action
+- Owner starts the EC2 instance. Then push, `deploy/deploy.sh feat/admin-only` on the server, and onboard Western World per `docs/staging-deploy.md` step 9 (or apply the `docs/onboarding.md` update if it already exists).
+
+## Session: GO0 — go-live runbook for today (owner, 16 Oct)
 
 ### What I did
 - Rewrote `docs/go-live.md`: Part A = step-by-step for today (staging takes Western World's real leads), Mermaid

@@ -13,8 +13,8 @@ export const ROLES = ["Admin", "Branch Manager", "Counsellor", "Receptionist"] a
 
 /** Features that exist today; later phases' gates are added here as they are built. */
 export const FEATURES = [
-  { code: "LEADS_CORE", label: "Lead capture", description: "Enquiries from every source, lead list, history, messages", required: true },
-  { code: "TEAM_AND_STUDENTS", label: "Team & branches", description: "Branches, roles, assignment to counsellors, staff admin, dashboard", required: false },
+  { code: "LEADS_CORE", label: "Lead capture", description: "Enquiries from every source, lead list, status changes, history, messages, dashboard", required: true },
+  { code: "TEAM_AND_STUDENTS", label: "Team & branches", description: "Branches, roles, assignment to counsellors, staff admin. Off: only Admins, who work every lead themselves", required: false },
 ] as const;
 
 export function emptyBlueprint(): Blueprint {

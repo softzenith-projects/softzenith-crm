@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SoftCRM Business Setup Form</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Figtree:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* Layout: one readable column of numbered sections, a sticky bar with the copy action. Source: business-intake.md */
+:root {
+  --bg: #f4f6fb;
+  --surface: #ffffff;
+  --ink: #141a2e;
+  --muted: #5b6480;
+  --line: #dde2ee;
+  --accent: #3b5bdb;
+  --accent-soft: #e8edfc;
+  --ok: #1f7a4d;
+  --display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --body: "Figtree", "Segoe UI", system-ui, sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e1220; --surface: #161b2c; --ink: #e8ebf5; --muted: #9aa3bf; --line: #2a3150;
+    --accent: #7c95f5; --accent-soft: #1f2846; --ok: #5cc794; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e1220; --surface: #161b2c; --ink: #e8ebf5; --muted: #9aa3bf; --line: #2a3150;
+  --accent: #7c95f5; --accent-soft: #1f2846; --ok: #5cc794; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--ink); font: 16px/1.55 var(--body); }
+.wrap { max-width: 860px; margin: 0 auto; padding: 32px 20px 120px; display: grid; gap: 20px; }
+header { display: grid; gap: 8px; padding: 8px 0 4px; }
+.brand { color: var(--accent); font-weight: 600; font-size: 14px; letter-spacing: .04em; text-transform: uppercase; }
+h1 { font: 700 clamp(28px, 4vw, 38px)/1.15 var(--display); margin: 0; text-wrap: balance; }
+h2 { font: 600 22px/1.25 var(--display); margin: 0; text-wrap: balance; display: flex; gap: 12px; align-items: baseline; }
+h2 .n { color: var(--accent); font-variant-numeric: tabular-nums; }
+.lede { color: var(--muted); max-width: 65ch; margin: 0; }
+section { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 24px; display: grid; gap: 16px; }
+.hint { color: var(--muted); font-size: 14px; margin: 0; max-width: 65ch; }
+.grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 16px; }
+.full { grid-column: 1 / -1; }
+.field { display: grid; gap: 6px; }
+label, .label { font-weight: 600; font-size: 14px; }
+.req { color: var(--accent); }
+input[type="text"], input[type="email"], input[type="tel"], select, textarea {
+  width: 100%; font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line);
+  border-radius: 9px; padding: 9px 11px;
+}
+textarea { min-height: 96px; resize: vertical; }
+input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-visible {
+  outline: 3px solid var(--accent); outline-offset: 1px;
+}
+.choices { display: grid; gap: 8px; }
+.choice { display: flex; gap: 10px; align-items: flex-start; font-weight: 400; font-size: 15px; }
+.choice input { margin-top: 4px; accent-color: var(--accent); }
+.choice b { font-weight: 600; }
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; min-width: 640px; }
+th { text-align: left; font-size: 13px; color: var(--muted); font-weight: 600; padding: 0 6px 6px; }
+td { padding: 4px 6px; vertical-align: top; }
+td input, td select { padding: 7px 9px; font-size: 14px; }
+.row-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+button { font: 600 15px var(--body); border-radius: 9px; padding: 9px 16px; cursor: pointer; border: 1px solid var(--line); background: var(--surface); color: var(--ink); }
+button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+button.link { border: 0; background: none; color: var(--muted); padding: 6px; font-weight: 500; }
+.note { background: var(--accent-soft); border-radius: 10px; padding: 12px 14px; font-size: 14px; }
+.bar { position: fixed; left: 0; right: 0; bottom: 0; background: var(--surface); border-top: 1px solid var(--line); }
+.bar .in { max-width: 860px; margin: 0 auto; padding: 12px 20px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; justify-content: space-between; }
+.status { color: var(--muted); font-size: 14px; }
+.status.ok { color: var(--ok); }
+#out { width: 100%; min-height: 220px; font: 13px/1.5 ui-monospace, Consolas, monospace; }
+@media (max-width: 600px) { .grid { grid-template-columns: 1fr; } section { padding: 18px; } }
+@media (prefers-reduced-motion: no-preference) { button { transition: filter .15s; } button:hover { filter: brightness(1.08); } }
+</style>
+</head>
+<body>
+<form class="wrap" id="form" novalidate>
+  <header>
+    <div class="brand">SoftZenith Softwares · SoftCRM CRM</div>
+    <h1>Set up your CRM</h1>
+    <p class="lede">Thank you for choosing SoftCRM. Fill in this form so we can set up your CRM with your name, your
+      brand and your team. It takes about 20 minutes. Fields marked <span class="req">*</span> are needed before we can
+      go live; the rest can follow later. Your answers are kept on this device while you work.</p>
+  </header>
+
+  <section>
+    <h2><span class="n">1</span>Your business</h2>
+    <div class="grid">
+      <div class="field full"><label for="bizName">Business name, as customers should see it <span class="req">*</span></label>
+        <input type="text" id="bizName" placeholder="Western World Visa Services"></div>
+      <div class="field"><label for="contactName">Main contact person <span class="req">*</span></label>
+        <input type="text" id="contactName"></div>
+      <div class="field"><label for="contactPhone">Their mobile <span class="req">*</span></label>
+        <input type="tel" id="contactPhone" placeholder="98765 43210"></div>
+      <div class="field"><label for="contactEmail">Their email <span class="req">*</span></label>
+        <input type="email" id="contactEmail"></div>
+      <div class="field"><label for="website">Your website address</label>
+        <input type="text" id="website" placeholder="www.yourbusiness.com"></div>
+      <div class="field"><label for="country">Country and time zone</label>
+        <select id="country">
+          <option value="IN|Asia/Kolkata">India (IST)</option>
+          <option value="AE|Asia/Dubai">United Arab Emirates</option>
+          <option value="GB|Europe/London">United Kingdom</option>
+          <option value="CA|America/Toronto">Canada (Eastern)</option>
+          <option value="AU|Australia/Sydney">Australia (Sydney)</option>
+        </select></div>
+      <div class="field"><label for="slug">A short name for your web address</label>
+        <input type="text" id="slug" placeholder="westernworld">
+        <p class="hint">Letters, numbers and dashes. It appears in your enquiry form's address and <b>cannot be changed later</b>.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="n">2</span>Your brand</h2>
+    <p class="hint">How your CRM and your enquiry form look to your team and your students.</p>
+    <div class="note"><b>Logo <span class="req">*</span>:</b> please email us a high-quality file (SVG, or PNG with a
+      transparent background). If you have one, send a square version too (the icon alone).</div>
+    <div class="grid">
+      <div class="field"><label for="colorMain">Main brand colour</label>
+        <input type="text" id="colorMain" placeholder="#1E3A8A, or “same as our website”"></div>
+      <div class="field"><label for="colorSecond">Second colour (if any)</label>
+        <input type="text" id="colorSecond"></div>
+      <div class="field full"><label for="tagline">One-line tagline, shown on your enquiry form</label>
+        <input type="text" id="tagline" placeholder="Your study-abroad partner since 2010"></div>
+      <div class="field"><label for="senderName">Name your messages are sent from</label>
+        <input type="text" id="senderName" placeholder="Western World Visa Services"></div>
+      <div class="field"><label for="replyTo">Email students can reply to</label>
+        <input type="email" id="replyTo"></div>
+    </div>
+    <div class="field">
+      <span class="label">Your CRM's address</span>
+      <div class="choices" role="radiogroup" aria-label="Your CRM's address">
+        <label class="choice"><input type="radio" name="address" id="addrStandard" value="Standard SoftCRM address" checked>
+          <span><b>Our standard address.</b> Fastest; nothing needed from you.</span></label>
+        <label class="choice"><input type="radio" name="address" id="addrSub" value="Own name with SoftCRM">
+          <span><b>Your own name with us</b>, e.g. yourname.softzenithlabs.com</span></label>
+        <label class="choice"><input type="radio" name="address" id="addrOwn" value="Own domain">
+          <span><b>Your own domain</b>, e.g. crm.yourbusiness.com. We send you one DNS record to add.</span></label>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="n">3</span>Your enquiry form</h2>
+    <div class="grid">
+      <div class="field"><label for="services">Services you offer <span class="req">*</span></label>
+        <textarea id="services" placeholder="One per line&#10;Study Visa&#10;Visitor Visa&#10;IELTS Coaching"></textarea></div>
+      <div class="field"><label for="countries">Countries students can choose</label>
+        <textarea id="countries" placeholder="One per line&#10;Canada&#10;UK&#10;Australia"></textarea>
+        <p class="hint">Leave empty to let students type any country.</p></div>
+      <div class="field"><label for="prefix">2–4 letters to start your lead numbers</label>
+        <input type="text" id="prefix" maxlength="4" placeholder="WWV">
+        <p class="hint">WWV gives lead numbers WWV-000001, WWV-000002, …</p></div>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="n">4</span>Branches</h2>
+    <p class="hint">Skip this if you have one office.</p>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Branch name</th><th>City</th><th></th></tr></thead>
+      <tbody id="branches"></tbody>
+    </table></div>
+    <div class="row-actions"><button type="button" id="addBranch">Add a branch</button></div>
+  </section>
+
+  <section>
+    <h2><span class="n">5</span>Your team</h2>
+    <p class="hint">Each person signs in with their <b>mobile number</b>, so give the number they actually use (with
+      WhatsApp if possible). You need <b>at least one Admin</b>.</p>
+    <div class="field">
+      <span class="label">Roles you will use</span>
+      <div class="choices">
+        <label class="choice"><input type="checkbox" id="roleAdmin" checked disabled>
+          <span><b>Admin.</b> Sees and does everything, adds staff.</span></label>
+        <label class="choice"><input type="checkbox" id="roleReception">
+          <span><b>Receptionist / front desk.</b> Sees every enquiry and hands each one to the right person.</span></label>
+        <label class="choice"><input type="checkbox" id="roleManager">
+          <span><b>Branch Manager.</b> Sees their branch's enquiries.</span></label>
+        <label class="choice"><input type="checkbox" id="roleCounsellor">
+          <span><b>Counsellor.</b> Sees only the enquiries handed to them.</span></label>
+      </div>
+    </div>
+    <div class="grid">
+      <div class="field"><label for="whoReceives">Who should be able to receive enquiries (have them assigned)?</label>
+        <input type="text" id="whoReceives" placeholder="e.g. Counsellors only, or Admin and Receptionist"></div>
+      <div class="field"><label for="whoStatus">Who should be able to change an enquiry's status?</label>
+        <input type="text" id="whoStatus" placeholder="e.g. Admin and Counsellors"></div>
+    </div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Full name *</th><th>Mobile *</th><th>Email</th><th>Role *</th><th>Branch</th><th>Designation</th><th></th></tr></thead>
+      <tbody id="staff"></tbody>
+    </table></div>
+    <div class="row-actions"><button type="button" id="addStaff">Add a person</button></div>
+    <p class="hint">For a long list, a spreadsheet with these columns is fine: email it to us instead.</p>
+  </section>
+
+  <section>
+    <h2><span class="n">6</span>Messages and alerts</h2>
+    <div class="choices">
+      <label class="choice"><input type="checkbox" id="welcomeEmail" checked><span>Send each new enquirer a welcome email</span></label>
+      <label class="choice"><input type="checkbox" id="welcomeWhatsApp" checked><span>Send each new enquirer a welcome WhatsApp (once WhatsApp is connected)</span></label>
+      <label class="choice"><input type="checkbox" id="studentUpdates" checked><span>Send students updates as their case moves</span></label>
+    </div>
+    <div class="grid">
+      <div class="field"><label for="alerts">Who should get a new-enquiry alert?</label>
+        <input type="text" id="alerts" placeholder="Default: every Admin and Receptionist"></div>
+      <div class="field"><label for="sheet">Google Sheet with a copy of every enquiry?</label>
+        <input type="text" id="sheet" placeholder="No, or the Google account(s) to share it with"></div>
+    </div>
+    <p class="hint">We will show you the wording of every message before anything is sent to your students.</p>
+  </section>
+
+  <section>
+    <h2><span class="n">7</span>Website and technical contacts</h2>
+    <div class="grid">
+      <div class="field"><label for="webPerson">Who built or manages your website (name, phone)</label>
+        <input type="text" id="webPerson"></div>
+      <div class="field"><label for="hosting">Where it is hosted, and who has the domain / DNS login</label>
+        <input type="text" id="hosting"></div>
+      <div class="field"><label for="mailProvider">Who provides your business email</label>
+        <input type="text" id="mailProvider" placeholder="Google Workspace, Microsoft 365, other"></div>
+      <div class="field"><label for="privacy">Your privacy policy page (if any)</label>
+        <input type="text" id="privacy"></div>
+      <div class="field"><label for="social">Facebook Page, Instagram, WhatsApp Business number</label>
+        <input type="text" id="social"></div>
+      <div class="field"><label for="existing">Existing enquiries in Excel or another CRM to bring in?</label>
+        <input type="text" id="existing"></div>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="n">8</span>Send it to us</h2>
+    <p class="hint">Click <b>Download setup file</b> and email that file to SoftZenith with your logo (and staff
+      spreadsheet, if any). If nothing downloads, click <b>Copy answers</b> and paste them into the email instead.
+      We will set up a trial version for you to check before going live.</p>
+    <label for="out" class="label">Your answers</label>
+    <textarea id="out" readonly></textarea>
+  </section>
+</form>
+
+<div class="bar"><div class="in">
+  <span class="status" id="status" aria-live="polite">Answers are kept on this device.</span>
+  <div class="row-actions">
+    <button type="button" class="link" id="clear">Start over</button>
+    <button type="button" id="copy">Copy answers</button>
+    <button type="button" class="primary" id="download">Download setup file</button>
+  </div>
+</div></div>
+
+<script>
+(function () {
+  var KEY = "softcrm-business-setup-v1";
+  var ROLES = ["Admin", "Receptionist", "Branch Manager", "Counsellor"];
+  var $ = function (id) { return document.getElementById(id); };
+  var fields = ["bizName", "contactName", "contactPhone", "contactEmail", "website", "country", "slug", "colorMain",
+    "colorSecond", "tagline", "senderName", "replyTo", "services", "countries", "prefix", "whoReceives", "whoStatus",
+    "alerts", "sheet", "webPerson", "hosting", "mailProvider", "privacy", "social", "existing"];
+  var checks = ["roleReception", "roleManager", "roleCounsellor", "welcomeEmail", "welcomeWhatsApp", "studentUpdates"];
+  var rowSeq = 0;
+
+  function cell(tag, attrs) {
+    var el = document.createElement(tag);
+    Object.keys(attrs).forEach(function (k) { el.setAttribute(k, attrs[k]); });
+    var td = document.createElement("td");
+    td.appendChild(el);
+    return { td: td, el: el };
+  }
+  function removeButton(tr) {
+    var td = document.createElement("td");
+    var b = document.createElement("button");
+    b.type = "button"; b.className = "link"; b.textContent = "Remove";
+    b.addEventListener("click", function () { tr.remove(); save(); });
+    td.appendChild(b);
+    return td;
+  }
+  function addBranch(v) {
+    v = v || {};
+    var tr = document.createElement("tr"), n = ++rowSeq;
+    [["name", "Rohtak"], ["city", "Rohtak"]].forEach(function (f) {
+      var c = cell("input", { type: "text", id: "branch-" + f[0] + "-" + n, "aria-label": "Branch " + f[0], "data-k": f[0], placeholder: f[1] });
+      c.el.value = v[f[0]] || "";
+      tr.appendChild(c.td);
+    });
+    tr.appendChild(removeButton(tr));
+    $("branches").appendChild(tr);
+  }
+  function addStaff(v) {
+    v = v || {};
+    var tr = document.createElement("tr"), n = ++rowSeq;
+    [["fullName", "text"], ["phone", "tel"], ["email", "email"]].forEach(function (f) {
+      var c = cell("input", { type: f[1], id: "staff-" + f[0] + "-" + n, "aria-label": f[0], "data-k": f[0] });
+      c.el.value = v[f[0]] || "";
+      tr.appendChild(c.td);
+    });
+    var r = cell("select", { id: "staff-role-" + n, "aria-label": "Role", "data-k": "role" });
+    ROLES.forEach(function (name) { var o = document.createElement("option"); o.textContent = name; r.el.appendChild(o); });
+    r.el.value = v.role || "Admin";
+    tr.appendChild(r.td);
+    [["branch", "text"], ["designation", "text"]].forEach(function (f) {
+      var c = cell("input", { type: f[1], id: "staff-" + f[0] + "-" + n, "aria-label": f[0], "data-k": f[0] });
+      c.el.value = v[f[0]] || "";
+      tr.appendChild(c.td);
+    });
+    tr.appendChild(removeButton(tr));
+    $("staff").appendChild(tr);
+  }
+  function rows(id) {
+    return Array.prototype.map.call($(id).querySelectorAll("tr"), function (tr) {
+      var o = {};
+      tr.querySelectorAll("[data-k]").forEach(function (el) { o[el.getAttribute("data-k")] = el.value.trim(); });
+      return o;
+    }).filter(function (o) { return Object.keys(o).some(function (k) { return o[k] && k !== "role"; }); });
+  }
+  function state() {
+    var s = { branches: rows("branches"), staff: rows("staff") };
+    fields.forEach(function (f) { s[f] = $(f).value; });
+    checks.forEach(function (f) { s[f] = $(f).checked; });
+    var a = document.querySelector('input[name="address"]:checked');
+    s.address = a ? a.value : "";
+    return s;
+  }
+  function lines(t) { return t.split(/\r?\n|,/).map(function (x) { return x.trim(); }).filter(Boolean); }
+  /* Empty text, not null: the console's onboarding form (Load file) fills its inputs from these values. */
+  function nul(t) { return (t || "").trim(); }
+
+  function blueprint(s) {
+    var region = s.country.split("|");
+    var team = s.roleReception || s.roleManager || s.roleCounsellor ||
+      s.staff.some(function (p) { return p.role && p.role !== "Admin"; });
+    return {
+      business: { name: nul(s.bizName), slug: nul(s.slug.toLowerCase()), defaultRegion: region[0], timezone: region[1] },
+      settings: {
+        leadNumberPrefix: nul(s.prefix.toUpperCase()), serviceInterests: lines(s.services), countries: lines(s.countries),
+        senderName: nul(s.senderName) || nul(s.bizName), welcomeEmail: s.welcomeEmail, welcomeWhatsApp: s.welcomeWhatsApp,
+        studentUpdates: s.studentUpdates, features: team ? ["LEADS_CORE", "TEAM_AND_STUDENTS"] : ["LEADS_CORE"]
+      },
+      branches: s.branches.map(function (b) { return { name: nul(b.name), city: nul(b.city) }; }),
+      staff: s.staff.map(function (p) {
+        return { fullName: nul(p.fullName), phone: nul(p.phone), email: nul(p.email), role: p.role,
+                 branch: nul(p.branch), designation: nul(p.designation) };
+      }),
+      /* Answers the console has no field for yet; the backend ignores this part. */
+      intake: {
+        contact: { name: nul(s.contactName), phone: nul(s.contactPhone), email: nul(s.contactEmail) },
+        website: nul(s.website),
+        brand: { mainColour: nul(s.colorMain), secondColour: nul(s.colorSecond), tagline: nul(s.tagline),
+                 replyTo: nul(s.replyTo), crmAddress: s.address },
+        team: { whoReceivesEnquiries: nul(s.whoReceives), whoChangesStatus: nul(s.whoStatus) },
+        alerts: { newEnquiryAlerts: nul(s.alerts), googleSheet: nul(s.sheet) },
+        technical: { websiteManagedBy: nul(s.webPerson), hostingAndDns: nul(s.hosting), emailProvider: nul(s.mailProvider),
+                     privacyPolicy: nul(s.privacy), social: nul(s.social), existingEnquiries: nul(s.existing) },
+        filledOn: new Date().toISOString().slice(0, 10)
+      }
+    };
+  }
+  function fileName(s) {
+    var base = (nul(s.slug) || nul(s.bizName) || "new-business").toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+    return (base || "new-business") + ".blueprint.json";
+  }
+  function summary(s) {
+    var roles = ["Admin"];
+    if (s.roleReception) roles.push("Receptionist");
+    if (s.roleManager) roles.push("Branch Manager");
+    if (s.roleCounsellor) roles.push("Counsellor");
+    var t = [
+      "SOFTCRM BUSINESS SETUP: " + (s.bizName || "(business name)"),
+      "",
+      "Contact: " + [s.contactName, s.contactPhone, s.contactEmail].filter(Boolean).join(", "),
+      "Website: " + (s.website || "-"),
+      "",
+      "BRAND",
+      "Logo: attached to this email",
+      "Colours: " + ([s.colorMain, s.colorSecond].filter(Boolean).join(", ") || "-"),
+      "Tagline: " + (s.tagline || "-"),
+      "Reply-to email: " + (s.replyTo || "-"),
+      "CRM address: " + s.address,
+      "",
+      "TEAM",
+      "Roles used: " + roles.join(", "),
+      "Who receives enquiries: " + (s.whoReceives || "-"),
+      "Who changes status: " + (s.whoStatus || "-"),
+      "",
+      "ALERTS",
+      "New-enquiry alerts: " + (s.alerts || "default (Admins and Receptionists)"),
+      "Google Sheet: " + (s.sheet || "-"),
+      "",
+      "TECHNICAL",
+      "Website managed by: " + (s.webPerson || "-"),
+      "Hosting / DNS login: " + (s.hosting || "-"),
+      "Email provider: " + (s.mailProvider || "-"),
+      "Privacy policy: " + (s.privacy || "-"),
+      "Facebook / Instagram / WhatsApp: " + (s.social || "-"),
+      "Existing enquiries to bring in: " + (s.existing || "-"),
+      "",
+      "SETUP FILE (for SoftZenith, please leave as is)",
+      JSON.stringify(blueprint(s), null, 2)
+    ];
+    return t.join("\n");
+  }
+  function render() { $("out").value = summary(state()); }
+  function save() {
+    render();
+    try { localStorage.setItem(KEY, JSON.stringify(state())); } catch (e) { /* storage unavailable: draft not kept */ }
+  }
+  function load() {
+    var s = null;
+    try { s = JSON.parse(localStorage.getItem(KEY) || "null"); } catch (e) { s = null; }
+    if (s) {
+      fields.forEach(function (f) { if (s[f] != null) $(f).value = s[f]; });
+      checks.forEach(function (f) { if (s[f] != null) $(f).checked = s[f]; });
+      document.querySelectorAll('input[name="address"]').forEach(function (r) { r.checked = r.value === s.address; });
+      (s.branches || []).forEach(addBranch);
+      (s.staff || []).forEach(addStaff);
+    }
+    if (!$("branches").children.length) addBranch();
+    if (!$("staff").children.length) addStaff();
+    render();
+  }
+
+  $("form").addEventListener("input", save);
+  $("form").addEventListener("change", save);
+  $("form").addEventListener("submit", function (e) { e.preventDefault(); });
+  $("addBranch").addEventListener("click", function () { addBranch(); save(); });
+  $("addStaff").addEventListener("click", function () { addStaff({ role: "Counsellor" }); save(); });
+  $("clear").addEventListener("click", function () {
+    try { localStorage.removeItem(KEY); } catch (e) { /* nothing kept */ }
+    $("form").reset();
+    $("branches").innerHTML = ""; $("staff").innerHTML = "";
+    addBranch(); addStaff(); render();
+    $("status").textContent = "Cleared. Start again whenever you are ready.";
+    $("status").className = "status";
+  });
+  $("copy").addEventListener("click", function () {
+    render();
+    var st = $("status");
+    var done = function () { st.textContent = "Copied. Paste it into an email to SoftZenith and attach your logo."; st.className = "status ok"; };
+    var fail = function () {
+      $("out").focus(); $("out").select();
+      st.textContent = "Could not copy automatically: the answers are selected below, press Ctrl+C (or Cmd+C).";
+      st.className = "status";
+    };
+    try { navigator.clipboard.writeText($("out").value).then(done, fail); } catch (e) { fail(); }
+  });
+  $("download").addEventListener("click", function () {
+    var s = state(), name = fileName(s), st = $("status");
+    try {
+      var url = URL.createObjectURL(new Blob([JSON.stringify(blueprint(s), null, 2)], { type: "application/json" }));
+      var a = document.createElement("a");
+      a.href = url; a.download = name;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+      st.textContent = "Saved as " + name + ". Email it to SoftZenith with your logo. Nothing downloaded? Use Copy answers.";
+      st.className = "status ok";
+    } catch (e) {
+      st.textContent = "Could not download here. Use Copy answers and paste them into an email instead.";
+      st.className = "status";
+    }
+  });
+  load();
+})();
+</script>
+</body>
+</html>
