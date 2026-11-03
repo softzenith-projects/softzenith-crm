@@ -68,7 +68,7 @@ spec: menu items appear only when their module exists (no fake counts).
 | LS1 | Lead sheet (owner, 16 Oct; stopgap for the Western World handover): every new / repeat enquiry is also appended to the business's Google Sheet via an Apps Script web app (`leadsheet` module, tenant setting `leadSheet`, `deploy/google-sheet/lead-sheet.gs`, `deploy/lead-sheet.sh`, `docs/lead-sheet.md`) | done (branch `feat/lead-sheet`); owner sets up the sheet |
 | ADMIN1 | Admin-only business for the first handover (owner, 30 Oct): without `TEAM_AND_STUDENTS` the Admin works every lead; staff, roles, branches, assignment refused and hidden | code done, uncommitted, **not deployed: staging server unreachable** |
 | GO1 | Rehearse on staging (`westernworld-test`), then onboard Western World on live (slug `westernworldvisaservices`), real branches + staff + codes, website pointed at `aimdesk-api`, end-to-end check | todo |
-| IMPORT1 | Lead import from .xlsx / .csv (owner, 3 Nov; Western World's "Portal Data Pattern.xlsx"): Admin uploads, matches columns (+ service/country values), checks, imports; no alerts; V10 | done (this session), uncommitted |
+| IMPORT1 | Lead import from .xlsx / .csv (owner, 3 Nov; Western World's "Portal Data Pattern.xlsx"): Admin uploads, matches columns (+ service/country values), checks, imports; no alerts; V10 | done; PR #5 into develop |
 | BRAND1 | Product name **SoftCRM** (placeholder, owner 3 Nov; replaces AimDesk of 9 Oct until a final name) in the UI (title, login, shell); Java package rename not planned. Lowercase `aimdesk` server names (`/opt/aimdesk`, compose project, cron, planned domains) unchanged | todo |
 | later | Applications, offers, visa cases, IELTS/PTE, payments, reports (PRD Phases 4–5) | todo |
 
@@ -125,7 +125,8 @@ the column matching is a step of the upload screen, not a settings page.
 
 ### Verification status
 - `./mvnw verify`: 288/288, coverage gate passes. `tsc`, lint (2 old warnings), Vitest 120/120, `npm run build` pass.
-- Git: uncommitted, on top of the earlier uncommitted work.
+- Git: branch `feat/lead-import` (from `feat/lead-sheet`), PR #5 into `develop`: commit 1 = ADMIN1 + sign-in 400 fix +
+  SoftCRM name + setup form, commit 2 = IMPORT1. Merging it also lands #3 and #4 (V10 needs V9 from #3).
 
 ## Session: FIX — 400 on sign-in from localhost cookies (owner, 3 Nov)
 
