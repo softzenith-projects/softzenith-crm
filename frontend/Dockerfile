@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-# AimDesk staff app image (Next.js standalone server). Built by deploy/docker-compose.yml.
+# SoftCRM staff app image (Next.js standalone server). Built by deploy/docker-compose.yml.
 
 FROM node:24-alpine AS build
 WORKDIR /app

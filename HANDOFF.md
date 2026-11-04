@@ -1,4 +1,4 @@
-# Handoff — 2026-10-16 (GO0 plan: Western World live on staging today; earlier AUTH1, TRUST1)
+# Handoff — 2026-11-03 (IMPORT1: lead import from a spreadsheet; earlier ADMIN1, GO0, AUTH1, TRUST1)
 
 Project rules, stack, conventions and settled decisions: **`CLAUDE.md`**. This file is the current state.
 
@@ -65,11 +65,126 @@ spec: menu items appear only when their module exists (no fake counts).
 | DEPLOY2 | Staging (Lightsail 2 GB) then live (Lightsail 4 GB), Mumbai; `aimdesk[-staging][-api].softzenithlabs.com`; smoke check list in `docs/go-live.md` | todo (needs AWS account + DNS) |
 | MAIL1 | Amazon SES: domain verification (SPF/DKIM/DMARC), production access | todo (needs AWS + DNS) |
 | GO0 | Western World live on the **staging** server today (owner, 16 Oct): website + form → staging, Google Workspace SMTP, WhatsApp (Meta Cloud API templates) to student + Admin, Meta lead ads webhook. Beginner runbook: `docs/go-live.md` Part A. Code still needed: C0 commit, C1 packaging, C5 privacy page + consent line, C2 real WhatsApp sender, C3 Admin WhatsApp alert, C4 Meta lead ads webhook | plan written; code todo |
+| LS1 | Lead sheet (owner, 16 Oct; stopgap for the Western World handover): every new / repeat enquiry is also appended to the business's Google Sheet via an Apps Script web app (`leadsheet` module, tenant setting `leadSheet`, `deploy/google-sheet/lead-sheet.gs`, `deploy/lead-sheet.sh`, `docs/lead-sheet.md`) | done (branch `feat/lead-sheet`); owner sets up the sheet |
+| ADMIN1 | Admin-only business for the first handover (owner, 30 Oct): without `TEAM_AND_STUDENTS` the Admin works every lead; staff, roles, branches, assignment refused and hidden | code done, uncommitted, **not deployed: staging server unreachable** |
 | GO1 | Rehearse on staging (`westernworld-test`), then onboard Western World on live (slug `westernworldvisaservices`), real branches + staff + codes, website pointed at `aimdesk-api`, end-to-end check | todo |
-| BRAND1 | Product name **AimDesk** (owner, 9 Oct) in the UI (title, login, shell); Java package rename not planned | todo |
+| IMPORT1 | Lead import from .xlsx / .csv (owner, 3 Nov; Western World's "Portal Data Pattern.xlsx"): Admin uploads, matches columns (+ service/country values), checks, imports; no alerts; V10 | done; PR #5 into develop |
+| BRAND1 | Product name **SoftCRM** (placeholder, owner 3 Nov; replaces AimDesk of 9 Oct until a final name) in the UI (title, login, shell); Java package rename not planned. Lowercase `aimdesk` server names (`/opt/aimdesk`, compose project, cron, planned domains) unchanged | todo |
 | later | Applications, offers, visa cases, IELTS/PTE, payments, reports (PRD Phases 4–5) | todo |
 
-## Session (latest): GO0 — go-live runbook for today (owner, 16 Oct)
+## Session (latest): IMPORT1 — lead import from a spreadsheet (owner, 3 Nov)
+
+Owner's decision: the business's Admin imports their own data (we can do it for them by signing in as their Admin);
+the column matching is a step of the upload screen, not a settings page.
+
+### What I built
+- **V10** `V10__lead_import.sql`: source type `IMPORT` (check constraint), `LEAD_IMPORT` for existing system Admin
+  roles (new tenants get it from the Admin template = all permissions), table `lead_import_columns` (the field a
+  business last chose per header, key = header lower-case letters/digits only).
+- Backend, all in the `lead` module: `SpreadsheetReader` (first sheet of .xlsx via fastexcel-reader, or .csv via
+  Commons CSV; `;` or `,`; UTF-8 else Windows-1252; header = first non-blank row; ≤5,000 rows, ≤50 columns; .xls refused
+  with "save as .xlsx"), `LeadImports` (suggest a field per column: saved choice, else a guess from the header; check or
+  import), `LeadService.importLead` (creates the lead + `CREATED` activity "Imported from <file>, row N"; **publishes no
+  event**, so no alerts, no student messages, no lead-sheet copy; a person with an open lead is left untouched and
+  reported "already in CRM"), `LeadImportController`: `POST /api/v1/lead-imports/read` (multipart) and
+  `POST /api/v1/lead-imports?dryRun=true|false`. Needs `LEAD_IMPORT` + `LEADS_CORE` (works for Admin-only businesses).
+  Rows are re-validated on import and saved 200 per transaction (a failing chunk is reported, the rest stays).
+  Multipart limit 5 MB (`application.yml`).
+- Row rules: name required and `NewLead.NAME_PATTERN`; mobile required and valid (libphonenumber, tenant region);
+  email optional but must look like one; lengths as the lead API; extra columns ≤10 KB; same phone+email twice in the
+  file → "Same person as row N". Unmatched columns default to EXTRA = kept in `custom_fields` under the header name
+  (e.g. Address).
+- Frontend: `/import` page (`app/(staff)/import/page.tsx`, helpers `lib/lead-import.ts`): upload → match columns (+ map
+  service/country values to the tenant's enquiry-form options; unambiguous ones pre-selected) → source label ("Portal")
+  → Check (nothing saved) → Import → counts, problem rows, "Rows not imported (.csv)". Menu "Import leads" under
+  Administration (permission only, no feature gate); "Import" button on Leads; `IMPORT` in the source filter; lead
+  detail now shows `customFields` in the Enquiry card. `lib/api-schema.d.ts` regenerated.
+- Info icon (tooltip) beside each column's field choice: what the field does (`FIELDS[].hint`, `columnHint` in
+  `lib/lead-import.ts`); a row-number column (Sr.No., S. No, #) says it isn't needed because every lead gets its own
+  CRM lead number (owner, 3 Nov).
+- New dependencies (justified): `org.dhatim:fastexcel-reader` 0.19.0 (streaming .xlsx reader, small; Apache POI is
+  ~15 MB and memory-hungry on the 2 GB server), `org.apache.commons:commons-csv` 1.14.1.
+- Tests: `LeadImportTests` (fixture `src/test/resources/imports/portal-data.xlsx`, shaped like the client's file),
+  `LeadImportsTest`, `SpreadsheetReaderTest`; `app/(staff)/import/page.test.tsx`. `test/api-mock.ts` no longer reads
+  multipart bodies (a jsdom File in Node's FormData never finishes streaming) and keeps non-JSON bodies as text.
+  `AppShell.test.tsx`: a solo Admin now sees Administration → Import leads.
+
+### Assumptions I made
+- "Portal" is a label, not a source type: imported leads are `IMPORT` with `source_detail` = the label typed (default
+  "Import"). If "Portal" is a specific lead source the owner wants in reports, it becomes its own source type.
+- Re-importing a person who has an open lead changes nothing on that lead (no repeat-enquiry count, no field merge).
+- Imported leads' created/last-enquiry time is the import time: the client's file has no enquiry date column.
+- Only the first sheet is read; no branch or assignee per row (Western World runs Admin-only).
+
+### What I could NOT verify
+- The client's real "Portal Data Pattern.xlsx" has **headers only, no rows**: read against a dev backend it matched all
+  7 columns correctly (Sr.No. → ignore, Address → extra) with 0 rows. A filled file has not been tried.
+- e2e (Playwright) not run and no e2e spec added; the page was not clicked through in a browser.
+- The running `.\dev` backend (8081) still runs the old code; restart it (`.\dev stop`, `.\dev`). V10 is already
+  applied to the local DB (a temporary backend on 8082 was started to regenerate the API types, then stopped).
+
+### Verification status
+- `./mvnw verify`: 288/288, coverage gate passes. `tsc`, lint (2 old warnings), Vitest 120/120, `npm run build` pass.
+- Git: branch `feat/lead-import` (from `feat/lead-sheet`), PR #5 into `develop`: commit 1 = ADMIN1 + sign-in 400 fix +
+  SoftCRM name + setup form, commit 2 = IMPORT1. Merging it also lands #3 and #4 (V10 needs V9 from #3).
+
+## Session: FIX — 400 on sign-in from localhost cookies (owner, 3 Nov)
+
+- Symptom: `localhost:3000/platform/login` answered every sign-in with a bare 400. Cause: the browser sends all
+  `localhost` cookies (other projects on other ports share them), the Next.js proxy forwards them, and Tomcat's 8 KB
+  header limit rejected the request before Spring (logged once as `Request header is too large`, then silently).
+- Fix: `server.max-http-request-header-size: 64KB` in `application.yml`. Checked by hand: login with a 9 KB cookie
+  through `:3000` now 200 (was 400). No automated test added; suites not re-run (config-only change).
+- Git: uncommitted, on top of the ADMIN1 work below.
+- Owner wants Western World to run with **Admin + Receptionist only**, assigning leads to each other (no Branch
+  Manager or Counsellor for now). Done in the **local DB only**: `roles.assignable = true` for ADMIN and RECEPTIONIST
+  (SQL, no API edits roles), staff BM and C disabled through the Staff API. Not repeatable on staging yet: the
+  blueprint cannot override a role's `assignable` flag or permissions (open for the owner). Receptionist has no
+  `LEAD_CHANGE_STATUS`, so it cannot move a lead it is assigned (also open).
+- Client setup form: `docs/onboarding/business-intake.md` (source; appendix maps each answer to where it goes and
+  what is not built) and `business-intake.html`, published at https://claude.ai/artifact/3bRSdxqSwbxqNnoDHnwFmb
+  (private until the owner shares it). Fillable. Owner's choice (3 Nov): the client sends the file the form makes, not
+  an Excel. **Download setup file** saves `<slug>.blueprint.json` for the console's Load file, with an extra `intake`
+  object (contact, brand, alerts, technical) that the backend ignores (checked: preview 200, ready). Downloads are
+  blocked inside claude.ai, so send clients the `.html`; "Copy answers" is the fallback. It asks for logo, colours, tagline, reply-to and CRM address although none is built yet (A2).
+- Product name is now **SoftCRM** (placeholder, owner 3 Nov) until a final name: every "AimDesk" in docs, comments,
+  Dockerfiles, the sheet script and the setup form replaced. Kept on purpose: lowercase `aimdesk` (server folder
+  `/opt/aimdesk`, compose project `name: aimdesk` which names the DB volume, images, cron file, planned
+  `aimdesk[-staging][-api]` domains, Meta system user). Renaming those needs a server move; do it with the final name.
+- Also seen: stopping a hung `.\dev` from a non-console shell killed Postgres uncleanly; it recovered on start.
+  `pg_ctl -w start | Out-Null` in `dev.ps1` hangs when run without a console (the pipe stays open); fine in a terminal.
+
+## Session: ADMIN1 — Admin-only handover (owner, 30 Oct)
+
+### What I built
+- Backend: `LeadController.stats` and `changeStatus` moved from `TEAM_AND_STUDENTS` to `LEADS_CORE` (the question G1 left open). `GET /users`, `/users/{id}` and `/roles` now also need `TEAM_AND_STUDENTS`. `PUT /users/{id}/signin-code` stays ungated so a lone Admin can change their code. `/api/v1/me` returns `features` (`FeatureGateService.enabledFeatures`). `BlueprintValidator` refuses non-Admin staff when the feature is off.
+- Frontend: `hasFeature(me, TEAM)` in `AppShell`. Without it: no Staff/Branches menu or Branch footer; `app/(staff)/admin/layout.tsx` sends typed-in addresses to `/leads`; no Assign box, Assigned to, Branch or Unassigned filter; dashboard shows New / Contacted / Closed with no team workload. `LeadForm` hides Branch when the business has none (any plan). User menu: "Change my sign-in code" for `USER_MANAGE` (`MySigninCodeForm`, signs out on save because the code change ends the session; `SigninCodeField` shared with the Staff page).
+- `docs/onboarding/westernworld.blueprint.json`: features `LEADS_CORE` only. Docs: CLAUDE.md, `docs/onboarding.md`, `docs/staging-deploy.md` step 9, `docs/generate_flows.py` → `docs/flows.md`.
+- Tests: `FeatureGateEnforcementTests`, `BlueprintValidatorTest`, `MeControllerTests`, page tests, new `e2e/admin-only-business.spec.ts`.
+
+### Assumptions I made
+- "Team & branches" off is the Admin-only switch, rather than a new gate: it already blocked staff, branches and assignment.
+- Leads keep any branch the website sends; only the display is hidden.
+- If a business with `ASSIGNED` leads is later switched off, those leads keep their badge but the status filter and pipeline leave that status out. Not built for, because nothing turns a team off today.
+
+### What I could NOT verify
+- Nothing is deployed. On 30 Oct `54.253.207.84` timed out on 22, 80 and 443 while DNS and GitHub worked, so the server looks stopped; no AWS access from this machine. Whether Western World is already onboarded there is unknown. If it is, it still has `TEAM_AND_STUDENTS` and needs the update in `docs/onboarding.md`.
+- Sign-in with mobile + code on the Admin-only tenant in a browser: e2e uses dev login. `signin-code.spec.ts` covers the code flow on a normal tenant.
+- Staging email goes to Mailpit, so the client gets no real new-lead alerts or student emails there; WhatsApp is demo only and shows a "Demo" badge under Messages sent.
+
+### Verification status
+- `./mvnw verify`: 212/212, coverage gate passes. `tsc`, lint (2 old warnings), Vitest 112/112, `npm run build` pass.
+- `npm run e2e`: 8 pass, 1 fails: `platform-onboarding.spec.ts` at the Businesses list after Go live. **Existing bug**: it fails the same way on the code before this change. The business is created and shows after a reload, but the list does not refresh. Not fixed.
+- `phase1-enquiry-to-counsellor.spec.ts` was already outdated: the closing reason appears twice on the page. Its locator now targets the Enquiry card line.
+- Port 3000 on the owner's machine was used by another project (Untiered), so e2e ran with a temporary config on 3100, since deleted.
+
+### Git status
+- Uncommitted on `feat/lead-sheet` (on top of `28a2eea`), which contains `feat/staging-deploy`. Commit on a new `feat/admin-only` branch from here, not from `develop`: `develop` has neither the deploy files nor the lead sheet.
+
+## Next action
+- Owner starts the EC2 instance. Then push, `deploy/deploy.sh feat/admin-only` on the server, and onboard Western World per `docs/staging-deploy.md` step 9 (or apply the `docs/onboarding.md` update if it already exists).
+
+## Session: GO0 — go-live runbook for today (owner, 16 Oct)
 
 ### What I did
 - Rewrote `docs/go-live.md`: Part A = step-by-step for today (staging takes Western World's real leads), Mermaid
@@ -98,6 +213,9 @@ spec: menu items appear only when their module exists (no fake counts).
 - Staging server live (16 Oct): `/opt/aimdesk` on branch `feat/staging-deploy`, `deploy/.env` generated on the server (never printed). Verified from outside: Let's Encrypt certs for `crm-staging`, `crm-staging-api`, `crm-staging-mail`; `/actuator/health` UP; API address returns 404 for staff paths and a problem JSON for the public enquiry endpoints; staff `/login` and `/platform` 200; Mailpit 401 without login; HTTP redirects to HTTPS. Flyway applied V1-V9 on Postgres 18. Memory after start: API 433 MB, DB 52 MB, web 43 MB, ~0.8 GB free. Backup cron `/etc/cron.d/aimdesk-backup` (21:30 UTC) and a test dump OK.
 - Build fixes found on the server: `frontend/package-lock.json` regenerated with the image's npm 11.19 (`npm ci` rejected the Windows lock: missing optional `@emnapi/*`); `backup.sh` reads `/dev/null` so `docker compose exec` cannot swallow a caller's stdin.
 - Next for the owner: console sign-in, then onboard Western World (slug `westernworldvisaservices`, owner as Admin), Vercel env `CRM_API_URL` + `NEXT_PUBLIC_CRM_TENANT`, redeploy, test (docs/staging-deploy.md steps 9-11). After the first console sign-in: remove `CRM_PLATFORM_ADMIN_*` from `deploy/.env` and restart the API.
+
+- LS1 lead sheet: `LeadEvents.LeadCreated` gains `sourceDetail` + `occurredAt`; `LeadRepeatEnquiry` gains `serviceInterest`, `preferredCountry`, `sourceDetail`, `occurredAt` (null on events stored before). `TenantSettings` gains `leadSheet(url, secret)` (5th component; the old 4-argument constructor stays; `toString` hides the secret). `leadsheet.LeadSheetSync` (async after commit, like `LeadNotifications`) posts `{secret, columns, row, ref=eventId}` through `SheetClient` (JDK HttpClient, follows Apps Script's redirect, https only except localhost, 3 attempts, `crm.lead-sheet.attempts` / `retry-pause`); failure is logged and rethrown so Modulith re-delivers on restart; the script skips a `Ref` it already has and prefixes `'` to values starting with = + - @. No console screen yet: `deploy/lead-sheet.sh <slug> <url|off>` writes the setting and prints a new secret. Earlier leads are not back-filled.
+- Website stopped promising email/WhatsApp confirmations (website branch `fix/thank-you-wording`).
 
 ### Open for the owner
 - Domain confirmed: softzenithlabs.com (owner, 16 Oct). Still open: Western World email usage and old-hosting login; WhatsApp sender number; approve C0–C5.

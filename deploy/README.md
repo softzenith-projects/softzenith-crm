@@ -1,4 +1,4 @@
-# Running AimDesk on a server
+# Running SoftCRM on a server
 
 One server runs everything with Docker Compose: PostgreSQL, the API, the staff app, Mailpit (staging test inbox) and
 Caddy, which serves HTTPS for the three addresses in `deploy/.env`. The step-by-step plan for the first staging server
@@ -28,6 +28,7 @@ from `deploy/.env` and run `cd deploy && docker compose up -d api`.
 | API log (last 200 lines, follow) | `cd deploy && docker compose logs -f --tail 200 api` |
 | Restart one part | `cd deploy && docker compose restart api` |
 | Back up now | `deploy/backup.sh` |
+| Connect a business's Google Sheet | `deploy/lead-sheet.sh <slug> <web-app-url>` (`off` to stop); see `docs/lead-sheet.md` |
 | Database shell | `cd deploy && docker compose exec db psql -U crm_app -d crm` |
 
 ## Nightly backup

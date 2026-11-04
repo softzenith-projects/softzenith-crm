@@ -42,8 +42,19 @@ export function routes(table: Record<string, (body: unknown, request: Request) =
 
 export const fakeFetch: typeof fetch = async (input, init) => {
   const request = input instanceof Request ? input : new Request(new URL(String(input), "http://localhost:3000"), init);
-  const text = request.method === "GET" ? "" : await request.clone().text();
-  const body = text ? JSON.parse(text) : undefined;
+  // A file upload's body is not read: a jsdom File inside Node's FormData never finishes streaming.
+  const upload = request.headers.get("Content-Type")?.startsWith("multipart/form-data");
+  const text = request.method === "GET" || upload ? "" : await request.clone().text();
+  const body = text ? parse(text) : undefined;
   requests.push({ method: request.method, path: new URL(request.url).pathname + new URL(request.url).search, headers: request.headers, body });
   return handler(request, body);
 };
+
+/** JSON bodies are parsed; anything else (a file upload) is kept as text. */
+function parse(text: string): unknown {
+  try {
+    return JSON.parse(text);
+  } catch {
+    return text;
+  }
+}

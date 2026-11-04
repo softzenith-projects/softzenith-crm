@@ -81,7 +81,7 @@ class LeadController {
     @PreAuthorize("hasAuthority('REPORTS_VIEW')")
     @Operation(summary = "Lead counts by status, source and assignee for leads created in [from, to) (omit for all time)")
     LeadStats stats(@RequestParam(required = false) Instant from, @RequestParam(required = false) Instant to) {
-        featureGate.requireFeature(FeatureGate.TEAM_AND_STUDENTS);
+        featureGate.requireFeature(FeatureGate.LEADS_CORE);
         return leads.stats(from, to);
     }
 
@@ -116,7 +116,7 @@ class LeadController {
     @PreAuthorize("hasAuthority('LEAD_CHANGE_STATUS')")
     @Operation(summary = "Change status to NEW, CONTACTED or CLOSED (reason required). Leaving CLOSED needs LEAD_REOPEN.")
     LeadResponse changeStatus(@PathVariable UUID id, @Valid @RequestBody StatusRequest r) {
-        featureGate.requireFeature(FeatureGate.TEAM_AND_STUDENTS);
+        featureGate.requireFeature(FeatureGate.LEADS_CORE);
         return toResponses(List.of(leads.changeStatus(id, r.status(), r.reason()))).getFirst();
     }
 

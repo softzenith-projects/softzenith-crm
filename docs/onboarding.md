@@ -23,6 +23,25 @@ Roles: **Admin** (everything), **Branch Manager** (their branch's leads), **Coun
 A staff list in a spreadsheet can be pasted straight in (columns: Name, Mobile, Email, Role, Branch, Designation,
 Employee code).
 
+## Admin-only businesses
+
+To hand over just the Admin console, untick **Team & branches** in the **Features** list of the enquiry-form step and add
+only Admins. Western World's starter file has it off; a saved browser draft may not, so check the tick before going live.
+
+The Admin sees every lead, changes status, closes, reopens, edits and adds leads, and sees the dashboard. Staff, roles,
+branches and assignment are hidden, and the API refuses them. A non-Admin staff row stops the business going live.
+
+To add a team later, turn the feature on from the server (the console cannot change a live business yet). The change
+applies on the Admin's next page load:
+
+```bash
+cd /opt/aimdesk/deploy
+docker compose exec -T db sh -c 'psql -U "$POSTGRES_USER" -d crm -c "update tenants set settings = settings || '"'"'{\"enabledFeatures\": [\"LEADS_CORE\", \"TEAM_AND_STUDENTS\"]}'"'"' where slug = '"'"'<slug>'"'"' returning slug, settings->'"'"'enabledFeatures'"'"'"'
+```
+
+Use `[\"LEADS_CORE\"]` to make an existing business Admin-only. That hides the screens, but anyone already added as staff
+can still sign in, so disable them first, while Staff is still visible.
+
 ## Steps
 
 1. Sign in to the SoftZenith console at **`/platform`** with the platform admin username and password

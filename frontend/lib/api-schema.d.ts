@@ -206,6 +206,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/lead-imports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Check (dryRun=true, saves nothing) or import the rows. Imported leads get source IMPORT and send no alerts or messages; a person with an open lead is skipped. */
+        post: operations["run"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/lead-imports/read": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Read an .xlsx or .csv file (first sheet, header = first non-blank row) and suggest a lead field per column. Saves nothing. */
+        post: operations["read"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/dev/login": {
         parameters: {
             query?: never;
@@ -348,7 +382,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Current user in the selected tenant, with role and effective permissions */
+        /** Current user in the selected tenant, with role, effective permissions and the tenant's enabled features */
         get: operations["me"];
         put?: never;
         post?: never;
@@ -519,7 +553,7 @@ export interface components {
             message?: string;
             branch?: components["schemas"]["NamedRef"];
             /** @enum {string} */
-            sourceType?: "WEBSITE_FORM" | "META_LEAD_AD" | "WHATSAPP" | "WALK_IN" | "PHONE" | "REFERRAL" | "OTHER";
+            sourceType?: "WEBSITE_FORM" | "META_LEAD_AD" | "WHATSAPP" | "WALK_IN" | "PHONE" | "REFERRAL" | "OTHER" | "IMPORT";
             sourceDetail?: string;
             utmSource?: string;
             utmMedium?: string;
@@ -596,7 +630,7 @@ export interface components {
             /** Format: uuid */
             branchId?: string;
             /** @enum {string} */
-            sourceType: "WEBSITE_FORM" | "META_LEAD_AD" | "WHATSAPP" | "WALK_IN" | "PHONE" | "REFERRAL" | "OTHER";
+            sourceType: "WEBSITE_FORM" | "META_LEAD_AD" | "WHATSAPP" | "WALK_IN" | "PHONE" | "REFERRAL" | "OTHER" | "IMPORT";
             sourceDetail?: string;
             customFields?: {
                 [key: string]: unknown;
@@ -606,6 +640,52 @@ export interface components {
             /** @enum {string} */
             status: "NEW" | "CONTACTED" | "ASSIGNED" | "CLOSED";
             reason?: string;
+        };
+        ImportRequest: {
+            fileName?: string;
+            sourceLabel?: string;
+            headers?: string[];
+            columns?: ("FULL_NAME" | "PHONE" | "EMAIL" | "SERVICE_INTEREST" | "PREFERRED_COUNTRY" | "MESSAGE" | "EXTERNAL_REF" | "EXTRA" | "IGNORE")[];
+            rows?: components["schemas"]["ImportRow"][];
+            values?: {
+                [key: string]: {
+                    [key: string]: string;
+                };
+            };
+        };
+        ImportRow: {
+            /** Format: int32 */
+            row?: number;
+            cells?: string[];
+        };
+        ImportReport: {
+            dryRun?: boolean;
+            /** Format: int32 */
+            total?: number;
+            /** Format: int32 */
+            added?: number;
+            /** Format: int32 */
+            alreadyInCrm?: number;
+            /** Format: int32 */
+            duplicates?: number;
+            /** Format: int32 */
+            rejected?: number;
+            problems?: components["schemas"]["ImportRowResult"][];
+        };
+        ImportRowResult: {
+            /** Format: int32 */
+            row?: number;
+            name?: string;
+            phone?: string;
+            /** @enum {string} */
+            outcome?: "ADDED" | "ALREADY_IN_CRM" | "DUPLICATE_IN_FILE" | "REJECTED";
+            detail?: string;
+        };
+        ImportPreview: {
+            fileName?: string;
+            headers?: string[];
+            columns?: ("FULL_NAME" | "PHONE" | "EMAIL" | "SERVICE_INTEREST" | "PREFERRED_COUNTRY" | "MESSAGE" | "EXTERNAL_REF" | "EXTRA" | "IGNORE")[];
+            rows?: components["schemas"]["ImportRow"][];
         };
         LoginRequest: {
             phone: string;
@@ -750,6 +830,7 @@ export interface components {
             /** @enum {string} */
             dataScope?: "ALL" | "BRANCH" | "OWN";
             permissions?: string[];
+            features?: string[];
             branch?: components["schemas"]["MeBranch"];
         };
         MeRole: {
@@ -1171,7 +1252,7 @@ export interface operations {
         parameters: {
             query?: {
                 status?: "NEW" | "CONTACTED" | "ASSIGNED" | "CLOSED";
-                sourceType?: "WEBSITE_FORM" | "META_LEAD_AD" | "WHATSAPP" | "WALK_IN" | "PHONE" | "REFERRAL" | "OTHER";
+                sourceType?: "WEBSITE_FORM" | "META_LEAD_AD" | "WHATSAPP" | "WALK_IN" | "PHONE" | "REFERRAL" | "OTHER" | "IMPORT";
                 branchId?: string;
                 assignedTo?: string;
                 unassigned?: boolean;
@@ -1244,6 +1325,59 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["LeadResponse"];
+                };
+            };
+        };
+    };
+    run: {
+        parameters: {
+            query?: {
+                dryRun?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ImportRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ImportReport"];
+                };
+            };
+        };
+    };
+    read: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": {
+                    /** Format: binary */
+                    file: string;
+                };
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ImportPreview"];
                 };
             };
         };

@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-# AimDesk API image. Built by deploy/docker-compose.yml; tests run in CI / locally, not here.
+# SoftCRM API image. Built by deploy/docker-compose.yml; tests run in CI / locally, not here.
 
 FROM eclipse-temurin:21-jdk AS build
 WORKDIR /src

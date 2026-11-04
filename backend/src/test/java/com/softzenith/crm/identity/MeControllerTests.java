@@ -66,6 +66,17 @@ class MeControllerTests {
     }
 
     @Test
+    void reportsTheTenantsEnabledFeatures() throws Exception {
+        var tenant = onboard();
+        var phone = phone();
+        invite(tenant, phone, DefaultRoles.ADMIN);
+
+        mvc.perform(get("/api/v1/me").with(signedIn(UUID.randomUUID().toString(), phone)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.features", containsInAnyOrder("LEADS_CORE", "TEAM_AND_STUDENTS")));
+    }
+
+    @Test
     void requestWithoutTokenIsUnauthorized() throws Exception {
         mvc.perform(get("/api/v1/me")).andExpect(status().isUnauthorized());
     }

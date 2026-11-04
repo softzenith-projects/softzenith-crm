@@ -13,7 +13,7 @@
     "welcomeEmail": true,
     "welcomeWhatsApp": true,
     "studentUpdates": true,
-    "features": ["LEADS_CORE", "TEAM_AND_STUDENTS"]
+    "features": ["LEADS_CORE"]
   },
   "branches": [],
   "staff": []

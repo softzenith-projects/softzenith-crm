@@ -10,29 +10,35 @@ type Me = Schemas["MeResponse"];
 
 const tenant = { id: "t-1", slug: "westernworld", name: "Western World" };
 const rohini = { id: "b-rohini", name: "Rohini" };
+const features = ["LEADS_CORE", "TEAM_AND_STUDENTS"];
+const adminPermissions = ["BRANCH_MANAGE", "LEAD_ASSIGN", "LEAD_CHANGE_STATUS", "LEAD_CREATE", "LEAD_EDIT", "LEAD_IMPORT", "LEAD_NEW_ALERT",
+  "LEAD_REOPEN", "LEAD_SOURCE_MANAGE", "LEAD_VIEW", "REPORTS_VIEW", "ROLE_MANAGE", "TENANT_SETTINGS_MANAGE",
+  "USER_MANAGE", "USER_VIEW"];
 
 /** Signed-in users with the backend's default permissions per role (identity/DefaultRoles + V3–V5 migrations). */
 export const roles = {
   admin: {
     userId: "u-admin", fullName: "Anuj Admin", phone: "+919000000001", tenant, role: { code: "ADMIN", name: "Admin" },
-    dataScope: "ALL",
-    permissions: ["BRANCH_MANAGE", "LEAD_ASSIGN", "LEAD_CHANGE_STATUS", "LEAD_CREATE", "LEAD_EDIT", "LEAD_NEW_ALERT",
-      "LEAD_REOPEN", "LEAD_SOURCE_MANAGE", "LEAD_VIEW", "REPORTS_VIEW", "ROLE_MANAGE", "TENANT_SETTINGS_MANAGE",
-      "USER_MANAGE", "USER_VIEW"],
+    dataScope: "ALL", features, permissions: adminPermissions,
+  },
+  /** The Admin of a business whose plan has no Team & branches: they run it alone. */
+  soloAdmin: {
+    userId: "u-admin", fullName: "Anuj Admin", phone: "+919000000001", tenant, role: { code: "ADMIN", name: "Admin" },
+    dataScope: "ALL", features: ["LEADS_CORE"], permissions: adminPermissions,
   },
   receptionist: {
     userId: "u-reception", fullName: "Front Desk", phone: "+919000000004", tenant,
-    role: { code: "RECEPTIONIST", name: "Receptionist" }, dataScope: "ALL",
+    role: { code: "RECEPTIONIST", name: "Receptionist" }, dataScope: "ALL", features,
     permissions: ["LEAD_ASSIGN", "LEAD_CREATE", "LEAD_EDIT", "LEAD_NEW_ALERT", "LEAD_VIEW", "USER_VIEW"],
   },
   counsellor: {
     userId: "u-counsellor", fullName: "Natasha Counsellor", phone: "+919000000003", tenant, branch: rohini,
-    role: { code: "COUNSELLOR", name: "Counsellor" }, dataScope: "OWN",
+    role: { code: "COUNSELLOR", name: "Counsellor" }, dataScope: "OWN", features,
     permissions: ["LEAD_CHANGE_STATUS", "LEAD_CREATE", "LEAD_EDIT", "LEAD_VIEW", "USER_VIEW"],
   },
   branchManager: {
     userId: "u-manager", fullName: "Naman Manager", phone: "+919000000002", tenant, branch: rohini,
-    role: { code: "BRANCH_MANAGER", name: "Branch Manager" }, dataScope: "BRANCH",
+    role: { code: "BRANCH_MANAGER", name: "Branch Manager" }, dataScope: "BRANCH", features,
     permissions: ["LEAD_CREATE", "LEAD_EDIT", "LEAD_VIEW", "USER_VIEW"],
   },
 } satisfies Record<string, Me>;

@@ -49,6 +49,7 @@ class StaffController {
     @Operation(summary = "List staff; assignable=true gives the 'assign lead to' candidates")
     List<StaffResponse> list(@RequestParam(required = false) Boolean assignable,
                              @RequestParam(required = false) UserStatus status) {
+        featureGate.requireFeature(FeatureGate.TEAM_AND_STUDENTS);
         return staff.list().stream()
                 .filter(u -> assignable == null || u.getRole().isAssignable() == assignable)
                 .filter(u -> status == null || u.getStatus() == status)
@@ -59,6 +60,7 @@ class StaffController {
     @GetMapping("/{id}")
     @PreAuthorize("hasAuthority('USER_VIEW')")
     StaffResponse get(@PathVariable UUID id) {
+        featureGate.requireFeature(FeatureGate.TEAM_AND_STUDENTS);
         return StaffResponse.of(staff.get(id));
     }
 
@@ -104,6 +106,7 @@ class StaffController {
     @PreAuthorize("hasAuthority('USER_MANAGE')")
     @Operation(summary = "Set or replace the code this staff member signs in with (with their mobile number); "
             + "only a hash is stored and sessions opened with an earlier code end")
+    // Not behind TEAM_AND_STUDENTS: an Admin working alone still has to be able to change their own code.
     StaffResponse setSigninCode(@PathVariable UUID id, @Valid @RequestBody SigninCodeRequest request) {
         return StaffResponse.of(staff.setSigninCode(id, request.code()));
     }

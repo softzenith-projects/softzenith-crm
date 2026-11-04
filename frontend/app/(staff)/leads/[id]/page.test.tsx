@@ -58,6 +58,18 @@ describe("Lead detail", () => {
     expect(screen.getByText("provider down")).toBeInTheDocument();
   });
 
+  it("gives the admin of a business without Team & branches status changes and no assignment", async () => {
+    await renderAsStaff(<LeadDetailPage />, roles.soloAdmin, backend(lead()));
+
+    await userEvent.click(await screen.findByRole("button", { name: "Update status" }));
+    await vi.waitFor(() => expect(requests.find((r) => r.method === "POST")?.body).toEqual({ status: "CONTACTED" }));
+
+    expect(screen.queryByRole("combobox", { name: /assign to/i })).toBeNull();
+    expect(screen.queryByText("Assigned to")).toBeNull();
+    expect(screen.queryByText("Branch")).toBeNull();
+    expect(requests.some((r) => r.path.startsWith("/api/v1/users"))).toBe(false);
+  });
+
   it("lets reception assign to an active counsellor only", async () => {
     await renderAsStaff(<LeadDetailPage />, roles.receptionist, backend(lead()));
     const select = await screen.findByRole("combobox", { name: /assign to/i });
