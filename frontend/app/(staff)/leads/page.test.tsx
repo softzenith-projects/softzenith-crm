@@ -33,6 +33,27 @@ describe("Leads list", () => {
     expect(screen.getByText("2 leads")).toBeInTheDocument();
   });
 
+  it("leaves out assignment and branches for a business without Team & branches", async () => {
+    await renderAsStaff(<LeadsPage />, roles.soloAdmin, () => json(page([lead()])));
+
+    expect(await screen.findByText("Riya Sharma")).toBeInTheDocument();
+    for (const hidden of ["Assigned to", "Branch", "Unassigned", "Unassigned only"]) {
+      expect(screen.queryByText(hidden)).toBeNull();
+    }
+    expect(screen.queryByRole("option", { name: "Assigned" })).toBeNull();
+    expect(screen.getByRole("option", { name: "Contacted" })).toBeInTheDocument();
+  });
+
+  it("offers no branch in the add-lead form when the business has no branches", async () => {
+    nav.search = new URLSearchParams("new=1");
+    await renderAsStaff(<LeadsPage />, roles.soloAdmin, (request) =>
+      new URL(request.url).pathname.includes("enquiry-form") ? json({ ...form, branches: [] }) : json(page([])));
+
+    expect(await screen.findByRole("heading", { name: "Add a lead" })).toBeInTheDocument();
+    await vi.waitFor(() => expect(requests.some((r) => r.path.includes("enquiry-form"))).toBe(true));
+    expect(screen.queryByRole("combobox", { name: /branch/i })).toBeNull();
+  });
+
   it("takes filters from the URL and sends them to the backend", async () => {
     nav.search = new URLSearchParams("q=riya&status=NEW&unassigned=true");
     await renderAsStaff(<LeadsPage />, roles.receptionist, () => json(page([])));

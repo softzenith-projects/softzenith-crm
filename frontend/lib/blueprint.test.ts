@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { emptyBlueprint, forSending, lines, parseStaffSheet, slugify, stepOfField } from "./blueprint";
+import { emptyBlueprint, forSending, lines, parseStaffSheet, slugify, stepOfField, withoutSigninCodes } from "./blueprint";
 
 describe("slugify", () => {
   it("turns a business name into a web address", () => {
@@ -55,5 +55,20 @@ describe("forSending", () => {
     expect(sent.branches).toEqual([{ name: "", city: undefined }]);
     expect(sent.staff).toHaveLength(1);
     expect(sent.staff![0].email).toBeUndefined();
+  });
+});
+
+describe("sign-in codes in a blueprint", () => {
+  const bp = { ...emptyBlueprint(), staff: [{ fullName: "Anuj", phone: "9876543210", role: "Admin", signinCode: " 739164 " }] };
+
+  it("are sent to the backend (trimmed)", () => {
+    expect(forSending(bp).staff![0].signinCode).toBe("739164");
+  });
+
+  it("are left out of what the browser keeps or saves to a file", () => {
+    const kept = withoutSigninCodes(bp);
+    expect(JSON.stringify(kept)).not.toContain("739164");
+    expect(kept.staff![0].fullName).toBe("Anuj");
+    expect(bp.staff[0].signinCode).toBe(" 739164 "); // the form itself keeps it
   });
 });

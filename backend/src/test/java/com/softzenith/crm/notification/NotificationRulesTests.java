@@ -132,7 +132,7 @@ class NotificationRulesTests {
     void aListenerFailureIsLoggedForRetry(CapturedOutput output) {
         // A tenant that does not exist: the listener cannot load it and must fail loudly, not silently.
         listeners.on(new LeadCreated(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), "LD-404", "Ghost",
-                "+919000000000", null, null, null, null, LeadSourceType.WEBSITE_FORM, null));
+                "+919000000000", null, null, null, null, LeadSourceType.WEBSITE_FORM, null, null, null));
         await().atMost(Duration.ofSeconds(15)).untilAsserted(() -> assertThat(output)
                 .contains("Notifications for LeadCreated on lead LD-404 failed; the event will be retried on restart"));
     }

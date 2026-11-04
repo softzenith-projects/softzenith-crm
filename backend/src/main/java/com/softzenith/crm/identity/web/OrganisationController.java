@@ -62,6 +62,7 @@ class OrganisationController {
     @GetMapping("/roles")
     @PreAuthorize("hasAuthority('USER_VIEW')")
     List<RoleResponse> roles() {
+        featureGate.requireFeature(FeatureGate.TEAM_AND_STUDENTS);
         return admin.roles().stream().map(RoleResponse::of).toList();
     }
 

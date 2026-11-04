@@ -4,6 +4,7 @@ import com.softzenith.crm.shared.logging.Mask;
 import com.softzenith.crm.shared.phone.PhoneNumbers;
 import com.softzenith.crm.shared.tenant.TenantContext;
 import com.softzenith.crm.shared.web.ConflictException;
+import com.softzenith.crm.shared.web.InvalidInputException;
 import com.softzenith.crm.shared.web.NotFoundException;
 import com.softzenith.crm.tenancy.TenantRepository;
 import org.slf4j.Logger;
@@ -12,6 +13,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
@@ -27,12 +29,15 @@ public class StaffAdminService {
     private final RoleRepository roles;
     private final BranchRepository branches;
     private final TenantRepository tenants;
+    private final SigninCodeHasher hasher;
 
-    StaffAdminService(AppUserRepository users, RoleRepository roles, BranchRepository branches, TenantRepository tenants) {
+    StaffAdminService(AppUserRepository users, RoleRepository roles, BranchRepository branches, TenantRepository tenants,
+                      SigninCodeHasher hasher) {
         this.users = users;
         this.roles = roles;
         this.branches = branches;
         this.tenants = tenants;
+        this.hasher = hasher;
     }
 
     public record StaffDetails(String fullName, String phone, String email, UUID roleId, UUID branchId,
@@ -112,6 +117,20 @@ public class StaffAdminService {
         var user = managed(id);
         user.resetSignIn();
         log.info("Staff {} sign-in reset", id);
+        return user;
+    }
+
+    /**
+     * Sets (or replaces) the code this staff member signs in with, together with their phone. Only the hash is kept;
+     * sessions opened with an earlier code end. Admins may set their own code too.
+     */
+    public AppUser setSigninCode(UUID id, String code) {
+        SigninCodes.problem(code).ifPresent(problem -> {
+            throw new InvalidInputException(problem);
+        });
+        var user = managed(id);
+        user.setSigninCode(hasher.hash(code), Instant.now());
+        log.info("Staff {} sign-in code set", id);
         return user;
     }
 

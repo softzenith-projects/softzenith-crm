@@ -4,15 +4,17 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { createContext, useContext, useEffect, useState, type FormEvent, type ReactNode } from "react";
 import {
-  Building2, ChevronsUpDown, ExternalLink, LayoutDashboard, LogOut, Menu, Plus, Search, Users, UserRound, X,
+  Building2, ChevronsUpDown, ExternalLink, FileSpreadsheet, KeyRound, LayoutDashboard, LogOut, Menu, Plus, Search, Users, UserRound, X,
   type LucideIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Initials, initials } from "@/components/common";
+import { MySigninCodeForm } from "@/components/MySigninCodeForm";
 import { api, type Schemas } from "@/lib/api";
 import { signOut } from "@/lib/auth";
 import { session } from "@/lib/session";
@@ -32,9 +34,15 @@ export function useMe(): Me {
 /** UI hints only; the backend enforces every permission. */
 export const can = (me: Me, permission: string) => me.permissions?.includes(permission) ?? false;
 
-type NavItem = { href: string; label: string; icon: LucideIcon; permission: string };
+/** Staff, roles, branches and assignment. Without it a business is run by its Admins alone and none of that is shown. */
+export const TEAM = "TEAM_AND_STUDENTS";
 
-/** Only modules that exist are listed; each is shown when the user holds its permission. */
+/** Whether the business's plan includes a feature. UI hint only, like `can`. */
+export const hasFeature = (me: Me, feature: string) => me.features?.includes(feature) ?? false;
+
+type NavItem = { href: string; label: string; icon: LucideIcon; permission: string; feature?: string };
+
+/** Only modules that exist are listed; each is shown when the user holds its permission and the plan includes it. */
 const NAV: { title?: string; items: NavItem[] }[] = [
   {
     items: [
@@ -45,8 +53,9 @@ const NAV: { title?: string; items: NavItem[] }[] = [
   {
     title: "Administration",
     items: [
-      { href: "/admin/staff", label: "Staff", icon: Users, permission: "USER_VIEW" },
-      { href: "/admin/branches", label: "Branches", icon: Building2, permission: "BRANCH_MANAGE" },
+      { href: "/admin/staff", label: "Staff", icon: Users, permission: "USER_VIEW", feature: TEAM },
+      { href: "/admin/branches", label: "Branches", icon: Building2, permission: "BRANCH_MANAGE", feature: TEAM },
+      { href: "/import", label: "Import leads", icon: FileSpreadsheet, permission: "LEAD_IMPORT" },
     ],
   },
 ];
@@ -56,6 +65,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
   const path = usePathname();
   const [me, setMe] = useState<Me | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [changingCode, setChangingCode] = useState(false);
 
   useEffect(() => {
     if (!session.token()) {
@@ -100,7 +110,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
 
       <nav className="flex-1 space-y-5 overflow-y-auto px-3 py-2">
         {NAV.map((group, i) => {
-          const items = group.items.filter((item) => can(me, item.permission));
+          const items = group.items.filter((item) => can(me, item.permission) && (!item.feature || hasFeature(me, item.feature)));
           if (items.length === 0) return null;
           return (
             <div key={i}>
@@ -137,13 +147,15 @@ export default function AppShell({ children }: { children: ReactNode }) {
         })}
       </nav>
 
-      <div className="border-t border-sidebar-border px-5 py-3 text-xs">
-        <p className="text-sidebar-foreground/60">Branch</p>
-        <p className="flex items-center gap-2 font-semibold">
-          <span className="size-2 rounded-full bg-emerald-400" />
-          {me.dataScope === "ALL" ? "All branches" : me.branch?.name ?? "No branch"}
-        </p>
-      </div>
+      {hasFeature(me, TEAM) && (
+        <div className="border-t border-sidebar-border px-5 py-3 text-xs">
+          <p className="text-sidebar-foreground/60">Branch</p>
+          <p className="flex items-center gap-2 font-semibold">
+            <span className="size-2 rounded-full bg-emerald-400" />
+            {me.dataScope === "ALL" ? "All branches" : me.branch?.name ?? "No branch"}
+          </p>
+        </div>
+      )}
 
       <DropdownMenu>
         <DropdownMenuTrigger className="m-3 flex items-center gap-3 rounded-lg p-2 text-left outline-none hover:bg-sidebar-accent focus-visible:ring-2 focus-visible:ring-sidebar-ring">
@@ -160,6 +172,11 @@ export default function AppShell({ children }: { children: ReactNode }) {
           <DropdownMenuItem onClick={() => window.open(`/enquiry/${me.tenant?.slug}`, "_blank")}>
             <ExternalLink /> Public enquiry form
           </DropdownMenuItem>
+          {can(me, "USER_MANAGE") && (
+            <DropdownMenuItem onClick={() => setChangingCode(true)}>
+              <KeyRound /> Change my sign-in code
+            </DropdownMenuItem>
+          )}
           <DropdownMenuItem onClick={logout} variant="destructive">
             <LogOut /> Sign out
           </DropdownMenuItem>
@@ -170,6 +187,11 @@ export default function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <MeContext.Provider value={me}>
+      <Dialog open={changingCode} onOpenChange={setChangingCode}>
+        <DialogContent className="sm:max-w-md">
+          {changingCode && <MySigninCodeForm userId={me.userId!} phone={me.phone} onSaved={logout} />}
+        </DialogContent>
+      </Dialog>
       <div className="flex min-h-screen">
         <div className="sticky top-0 hidden h-screen lg:block">{sidebar}</div>
         {menuOpen && (

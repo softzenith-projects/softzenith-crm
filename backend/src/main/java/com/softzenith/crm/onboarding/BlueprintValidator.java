@@ -4,6 +4,7 @@ import com.google.i18n.phonenumbers.PhoneNumberUtil;
 import com.softzenith.crm.identity.DefaultRoles;
 import com.softzenith.crm.identity.OrganisationProvisioner.NewBranch;
 import com.softzenith.crm.identity.OrganisationProvisioner.NewStaff;
+import com.softzenith.crm.identity.SigninCodes;
 import com.softzenith.crm.onboarding.OnboardingPlan.OnboardingProblem;
 import com.softzenith.crm.shared.phone.PhoneNumbers;
 import com.softzenith.crm.shared.tenant.FeatureGate;
@@ -57,7 +58,7 @@ final class BlueprintValidator {
         var timezone = timezone(business.timezone());
         var settings = settings(bp.settings(), name);
         var branches = branches(bp.branches());
-        var staff = staff(bp.staff(), region, branches);
+        var staff = staff(bp.staff(), region, branches, settings.enabledFeatures().contains(FeatureGate.TEAM_AND_STUDENTS));
         return new Validated(name, slug, region, timezone, settings, branches, staff, List.copyOf(problems), List.copyOf(warnings));
     }
 
@@ -153,7 +154,7 @@ final class BlueprintValidator {
         return result;
     }
 
-    private List<NewStaff> staff(List<TenantBlueprint.OnboardingStaff> raw, String region, List<NewBranch> branches) {
+    private List<NewStaff> staff(List<TenantBlueprint.OnboardingStaff> raw, String region, List<NewBranch> branches, boolean team) {
         var rows = raw == null ? List.<TenantBlueprint.OnboardingStaff>of() : raw;
         var branchNames = new HashMap<String, String>();
         branches.stream().filter(b -> b.name() != null).forEach(b -> branchNames.put(b.name().toLowerCase(Locale.ROOT), b.name()));
@@ -164,7 +165,7 @@ final class BlueprintValidator {
         var admins = 0;
 
         for (int i = 0; i < rows.size(); i++) {
-            var row = rows.get(i) == null ? new TenantBlueprint.OnboardingStaff(null, null, null, null, null, null, null, null) : rows.get(i);
+            var row = rows.get(i) == null ? new TenantBlueprint.OnboardingStaff(null, null, null, null, null, null, null, null, null) : rows.get(i);
             var field = "staff[" + i + "]";
             var fullName = required(row.fullName(), field + ".fullName", "Name", 200);
             var label = fullName == null ? "Row " + (i + 1) : fullName;
@@ -197,6 +198,8 @@ final class BlueprintValidator {
                 problem(field + ".role", label + ": role must be Admin, Branch Manager, Counsellor or Receptionist");
             } else if (role.equals(DefaultRoles.ADMIN)) {
                 admins++;
+            } else if (!team) {
+                problem(field + ".role", label + ": only Admins can be added while Team & branches is off");
             }
 
             String branch = null;
@@ -213,11 +216,18 @@ final class BlueprintValidator {
                 if (first != null) problem(field + ".employeeCode", label + ": same employee code as row " + (first + 1));
             }
             var designation = limit(trim(row.designation()), field + ".designation", "Designation", 100);
-            result.add(new NewStaff(fullName, phone, email, role, branch, code, designation, row.joinedOn()));
+            var signinCode = trim(row.signinCode());
+            if (signinCode != null) {
+                SigninCodes.problem(signinCode).ifPresent(p -> problem(field + ".signinCode", label + ": " + p));
+            }
+            result.add(new NewStaff(fullName, phone, email, role, branch, code, designation, row.joinedOn(), signinCode));
         }
 
         if (admins == 0) {
             problem("staff", "Add at least one Admin: they manage staff, branches and settings after going live");
+        }
+        if (admins > 0 && result.stream().noneMatch(s -> DefaultRoles.ADMIN.equals(s.roleCode()) && s.signinCode() != null)) {
+            warnings.add("No Admin has a sign-in code, so nobody can sign in with mobile + code until one is set.");
         }
         if (result.stream().noneMatch(s -> s.email() != null && (DefaultRoles.ADMIN.equals(s.roleCode())
                 || DefaultRoles.RECEPTIONIST.equals(s.roleCode())))) {

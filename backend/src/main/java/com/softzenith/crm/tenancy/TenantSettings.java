@@ -12,7 +12,7 @@ import java.util.Set;
  * with an empty object.
  */
 public record TenantSettings(String leadNumberPrefix, EnquiryForm enquiryForm, Notifications notifications,
-                             Set<FeatureGate> enabledFeatures) {
+                             Set<FeatureGate> enabledFeatures, LeadSheet leadSheet) {
 
     /** What is actually built today (Phase 1 + 2); a tenant onboarded before feature gates existed gets the same. */
     private static final Set<FeatureGate> DEFAULT_FEATURES =
@@ -25,8 +25,34 @@ public record TenantSettings(String leadNumberPrefix, EnquiryForm enquiryForm, N
         enabledFeatures = enabledFeatures == null ? DEFAULT_FEATURES : Set.copyOf(enabledFeatures);
     }
 
+    /** Settings without a lead sheet (onboarding, dev data). */
+    public TenantSettings(String leadNumberPrefix, EnquiryForm enquiryForm, Notifications notifications,
+                          Set<FeatureGate> enabledFeatures) {
+        this(leadNumberPrefix, enquiryForm, notifications, enabledFeatures, null);
+    }
+
     public static TenantSettings defaults() {
         return new TenantSettings(null, null, null, null);
+    }
+
+    /**
+     * A Google Sheet that receives a copy of every enquiry (module {@code leadsheet}); null = none. Set by the
+     * platform team (deploy/lead-sheet.sh) until the console can edit a live business.
+     *
+     * @param url    the sheet script's web-app address (https)
+     * @param secret shared with the sheet script, which rejects posts without it
+     */
+    public record LeadSheet(String url, String secret) {
+
+        public boolean enabled() {
+            return url != null && !url.isBlank();
+        }
+
+        /** Keeps the secret out of logs. */
+        @Override
+        public String toString() {
+            return "LeadSheet[url=" + url + ", secret=" + (secret == null ? "none" : "***") + "]";
+        }
     }
 
     /** Options offered on the public enquiry form. Empty list = free-text field. */

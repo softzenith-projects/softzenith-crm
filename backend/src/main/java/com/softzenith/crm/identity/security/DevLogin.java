@@ -2,10 +2,6 @@ package com.softzenith.crm.identity.security;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.Environment;
 import org.springframework.core.env.Profiles;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
@@ -18,12 +14,9 @@ import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
 
 /**
- * DEVELOPMENT ONLY ({@code crm.auth.dev-login.enabled=true}): replaces the Supabase JWT decoder with one
- * that accepts tokens from {@link DevLoginController} (phone number, no OTP). Lets the UI be used before a
- * Supabase project and SMS gateway exist.
+ * DEVELOPMENT ONLY ({@code crm.auth.dev-login.enabled=true}): verifies tokens from {@link DevLoginController} (phone
+ * number, no OTP), next to the real issuers in {@link StaffTokenDecoders}. Lets the UI be used without sign-in codes.
  */
-@Configuration(proxyBeanMethods = false)
-@ConditionalOnProperty("crm.auth.dev-login.enabled")
 class DevLogin {
 
     private static final Logger log = LoggerFactory.getLogger(DevLogin.class);
@@ -36,8 +29,7 @@ class DevLogin {
         return new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "HmacSHA256");
     }
 
-    @Bean
-    JwtDecoder devJwtDecoder(@Value("${crm.auth.dev-login.secret}") String secret, Environment env) {
+    JwtDecoder devJwtDecoder(String secret, Environment env) {
         if (env.acceptsProfiles(Profiles.of("prod"))) {
             // Belt and braces: a copied config or SPRING_PROFILES_ACTIVE=dev,prod must never open production.
             throw new IllegalStateException("crm.auth.dev-login.enabled must not be set with the prod profile");

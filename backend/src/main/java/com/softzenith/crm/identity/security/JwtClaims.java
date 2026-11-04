@@ -4,9 +4,11 @@ import com.softzenith.crm.shared.phone.PhoneNumbers;
 import com.softzenith.crm.shared.web.InvalidInputException;
 import org.springframework.security.oauth2.jwt.Jwt;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 
 /** Reads identity-provider specific claims. Supabase puts the phone, without '+', in {@code phone}. */
 public final class JwtClaims {
@@ -32,6 +34,23 @@ public final class JwtClaims {
         } catch (InvalidInputException e) {
             return null;
         }
+    }
+
+    /**
+     * The staff rows a phone + code sign-in proved ({@link CrmTokens}), or null for any other token. Only these
+     * memberships may be opened with it.
+     */
+    public static List<UUID> codeSignInUsers(Jwt jwt) {
+        if (!CrmTokens.ISSUER.equals(jwt.getClaimAsString("iss"))) {
+            return null;
+        }
+        var ids = jwt.getClaimAsStringList(CrmTokens.USERS_CLAIM);
+        return ids == null ? List.of() : ids.stream().map(UUID::fromString).toList();
+    }
+
+    /** When the token was issued; a code changed after this ends the session. */
+    public static Instant issuedAt(Jwt jwt) {
+        return jwt.getIssuedAt();
     }
 
     /** {@code amr} is a list of {@code {"method": "otp", ...}} objects (Supabase) or plain strings (RFC 8176). */

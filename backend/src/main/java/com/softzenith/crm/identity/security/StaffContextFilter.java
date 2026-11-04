@@ -51,7 +51,7 @@ final class StaffContextFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
             throws ServletException, IOException {
         var jwt = ((JwtAuthenticationToken) SecurityContextHolder.getContext().getAuthentication()).getToken();
-        var memberships = directory.memberships(jwt.getSubject(), JwtClaims.verifiedPhone(jwt));
+        var memberships = directory.memberships(jwt);
 
         StaffPrincipal staff;
         var requested = request.getHeader(TENANT_HEADER);

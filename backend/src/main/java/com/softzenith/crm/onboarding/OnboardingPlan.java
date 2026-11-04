@@ -20,6 +20,6 @@ public record OnboardingPlan(boolean ready, List<OnboardingProblem> problems, Li
                           List<String> features) {
     }
 
-    public record OnboardingStaffLine(String fullName, String phone, String role, String branch) {
+    public record OnboardingStaffLine(String fullName, String phone, String role, String branch, boolean hasSigninCode) {
     }
 }

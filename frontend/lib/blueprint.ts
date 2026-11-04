@@ -13,8 +13,8 @@ export const ROLES = ["Admin", "Branch Manager", "Counsellor", "Receptionist"] a
 
 /** Features that exist today; later phases' gates are added here as they are built. */
 export const FEATURES = [
-  { code: "LEADS_CORE", label: "Lead capture", description: "Enquiries from every source, lead list, history, messages", required: true },
-  { code: "TEAM_AND_STUDENTS", label: "Team & branches", description: "Branches, roles, assignment to counsellors, staff admin, dashboard", required: false },
+  { code: "LEADS_CORE", label: "Lead capture", description: "Enquiries from every source, lead list, status changes, history, messages, dashboard", required: true },
+  { code: "TEAM_AND_STUDENTS", label: "Team & branches", description: "Branches, roles, assignment to counsellors, staff admin. Off: only Admins, who work every lead themselves", required: false },
 ] as const;
 
 export function emptyBlueprint(): Blueprint {
@@ -80,6 +80,12 @@ export function forSending(bp: Blueprint): Blueprint {
     },
     branches: (bp.branches ?? []).map((b) => ({ name: b.name, city: blank(b.city) })),
     staff: (bp.staff ?? []).map((s) => ({ ...s, email: blank(s.email), branch: blank(s.branch),
-      designation: blank(s.designation), employeeCode: blank(s.employeeCode), joinedOn: blank(s.joinedOn) })),
+      designation: blank(s.designation), employeeCode: blank(s.employeeCode), joinedOn: blank(s.joinedOn),
+      signinCode: blank(s.signinCode) })),
   };
+}
+
+/** The blueprint without sign-in codes: what may be kept in the browser's draft or saved to a file. */
+export function withoutSigninCodes(bp: Blueprint): Blueprint {
+  return { ...bp, staff: bp.staff?.map((s) => ({ ...s, signinCode: undefined })) };
 }

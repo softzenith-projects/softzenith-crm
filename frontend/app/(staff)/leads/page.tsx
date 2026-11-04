@@ -5,15 +5,15 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 import useSWR from "swr";
 import { toast } from "sonner";
-import { ChevronLeft, ChevronRight, Plus, Search, UserRound } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { ChevronLeft, ChevronRight, FileSpreadsheet, Plus, Search, UserRound } from "lucide-react";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { can, useMe } from "@/components/AppShell";
+import { TEAM, can, hasFeature, useMe } from "@/components/AppShell";
 import { Initials, PageHeader, StatusBadge, humanize } from "@/components/common";
 import { LeadForm } from "@/components/LeadForm";
 import { api, formatDate, unwrap, type Schemas } from "@/lib/api";
@@ -23,7 +23,7 @@ type Status = NonNullable<Schemas["LeadResponse"]["status"]>;
 type Source = NonNullable<Schemas["LeadResponse"]["sourceType"]>;
 
 const STATUSES: Status[] = ["NEW", "CONTACTED", "ASSIGNED", "CLOSED"];
-const SOURCES: Source[] = ["WEBSITE_FORM", "META_LEAD_AD", "WHATSAPP", "WALK_IN", "PHONE", "REFERRAL", "OTHER"];
+const SOURCES: Source[] = ["WEBSITE_FORM", "META_LEAD_AD", "WHATSAPP", "WALK_IN", "PHONE", "REFERRAL", "OTHER", "IMPORT"];
 
 export default function LeadsPage() {
   return <Suspense><LeadsFromUrl /></Suspense>;
@@ -38,6 +38,7 @@ function LeadsFromUrl() {
 function Leads({ params }: { params: URLSearchParams }) {
   const me = useMe();
   const router = useRouter();
+  const team = hasFeature(me, TEAM);
   const [filters, setFilters] = useState({
     status: params.get("status") ?? "", sourceType: "", q: params.get("q") ?? "",
     unassigned: params.get("unassigned") === "true", page: 0,
@@ -69,7 +70,10 @@ function Leads({ params }: { params: URLSearchParams }) {
       <PageHeader
         title="Leads"
         description={leads ? `${leads.totalElements} lead${leads.totalElements === 1 ? "" : "s"}` : "Every enquiry, from every source"}
-        actions={can(me, "LEAD_CREATE") && <Button onClick={() => setAdding(true)}><Plus /> Add lead</Button>}
+        actions={<>
+          {can(me, "LEAD_IMPORT") && <Link href="/import" className={buttonVariants({ variant: "outline" })}><FileSpreadsheet /> Import</Link>}
+          {can(me, "LEAD_CREATE") && <Button onClick={() => setAdding(true)}><Plus /> Add lead</Button>}
+        </>}
       />
 
       <Dialog open={adding} onOpenChange={(open) => (open ? setAdding(true) : closeAdd())}>
@@ -103,16 +107,18 @@ function Leads({ params }: { params: URLSearchParams }) {
           </div>
           <NativeSelect value={filters.status} onChange={(e) => set({ status: e.target.value })}>
             <NativeSelectOption value="">All statuses</NativeSelectOption>
-            {STATUSES.map((s) => <NativeSelectOption key={s} value={s}>{humanize(s)}</NativeSelectOption>)}
+            {STATUSES.filter((s) => team || s !== "ASSIGNED").map((s) => <NativeSelectOption key={s} value={s}>{humanize(s)}</NativeSelectOption>)}
           </NativeSelect>
           <NativeSelect value={filters.sourceType} onChange={(e) => set({ sourceType: e.target.value })}>
             <NativeSelectOption value="">All sources</NativeSelectOption>
             {SOURCES.map((s) => <NativeSelectOption key={s} value={s}>{humanize(s)}</NativeSelectOption>)}
           </NativeSelect>
-          <label className="flex items-center gap-2 text-sm">
-            <Checkbox checked={filters.unassigned} onCheckedChange={(v) => set({ unassigned: v === true })} />
-            Unassigned only
-          </label>
+          {team && (
+            <label className="flex items-center gap-2 text-sm">
+              <Checkbox checked={filters.unassigned} onCheckedChange={(v) => set({ unassigned: v === true })} />
+              Unassigned only
+            </label>
+          )}
         </div>
 
         <Table>
@@ -122,8 +128,8 @@ function Leads({ params }: { params: URLSearchParams }) {
               <TableHead>Interest</TableHead>
               <TableHead>Source</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead>Assigned to</TableHead>
-              <TableHead>Branch</TableHead>
+              {team && <TableHead>Assigned to</TableHead>}
+              {team && <TableHead>Branch</TableHead>}
               <TableHead className="pr-4">Last enquiry</TableHead>
             </TableRow>
           </TableHeader>
@@ -149,8 +155,8 @@ function Leads({ params }: { params: URLSearchParams }) {
                 <TableCell>{[l.serviceInterest, l.preferredCountry].filter(Boolean).join(" · ") || "—"}</TableCell>
                 <TableCell>{humanize(l.sourceType)}</TableCell>
                 <TableCell><StatusBadge status={l.status} /></TableCell>
-                <TableCell>{l.assignedTo?.name ?? <span className="text-muted-foreground">Unassigned</span>}</TableCell>
-                <TableCell>{l.branch?.name ?? "—"}</TableCell>
+                {team && <TableCell>{l.assignedTo?.name ?? <span className="text-muted-foreground">Unassigned</span>}</TableCell>}
+                {team && <TableCell>{l.branch?.name ?? "—"}</TableCell>}
                 <TableCell className="pr-4 text-muted-foreground">{formatDate(l.lastEnquiryAt ?? l.createdAt)}</TableCell>
               </TableRow>
             ))}

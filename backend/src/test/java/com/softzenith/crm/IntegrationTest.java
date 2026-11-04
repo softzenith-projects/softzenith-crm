@@ -21,8 +21,12 @@ import static io.zonky.test.db.AutoConfigureEmbeddedDatabase.DatabaseProvider.EM
 // per-tenant enquiry limits are lifted here; the per-phone limit stays at its real value (see PublicIntakeSecurityTests).
 @SpringBootTest(properties = {"spring.mail.host=localhost", "spring.mail.port=3025",
         "crm.public-intake.rate-limit.per-ip-per-minute=100000", "crm.public-intake.rate-limit.per-ip-per-hour=100000",
-        "crm.public-intake.rate-limit.per-tenant-per-hour=100000"})
+        "crm.public-intake.rate-limit.per-tenant-per-hour=100000",
+        "crm.trusted-proxy.secret=" + IntegrationTest.PROXY_SECRET})
 @AutoConfigureMockMvc
 @AutoConfigureEmbeddedDatabase(provider = EMBEDDED)
 public @interface IntegrationTest {
+
+    /** The shared secret a tenant website on another host sends with the visitor's address (TrustedProxyFilter). */
+    String PROXY_SECRET = "test-proxy-secret-0123456789abcdef";
 }

@@ -45,7 +45,7 @@ test("an enquiry travels from the website to a counsellor and back to reception"
     await page.getByLabel("Change status to").selectOption("CLOSED");
     await page.getByLabel("Reason *").fill("E2E: chose another agency");
     await page.getByRole("button", { name: "Update status" }).click();
-    await expect(page.getByText(/E2E: chose another agency/)).toBeVisible();
+    await expect(page.getByText(/^Closed .*: E2E: chose another agency/)).toBeVisible(); // also in the Activity list
 
     await page.getByRole("button", { name: "Reopen" }).click();
     await expect(page.getByText("Unassigned", { exact: true }).first()).toBeVisible();

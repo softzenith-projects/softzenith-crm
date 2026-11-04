@@ -10,6 +10,9 @@
 .dev-pids.json
 .dev-sites.json
 
+# Server database dumps (deploy/backup.sh)
+deploy/backups/
+
 # Generated output (Spring Modulith writes build/generated-spring-modulith at the repo root)
 build/
 

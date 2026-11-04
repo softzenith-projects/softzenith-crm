@@ -85,6 +85,16 @@ class BlueprintValidatorTest {
     }
 
     @Test
+    void withoutTeamAndBranchesOnlyAdminsCanBeAdded() {
+        var adminsOnly = new OnboardingSettings("WWV", null, null, null, null, null, null, Set.of("LEADS_CORE"));
+        assertThat(fields(new TenantBlueprint(valid().business(), adminsOnly, null, ADMIN_ONLY))).isEmpty();
+
+        var withCounsellor = new TenantBlueprint(valid().business(), adminsOnly, null,
+                List.of(person("A", "9876543210", "Admin", null), person("Priya", "9876543211", "Counsellor", null)));
+        assertThat(fields(withCounsellor)).containsExactly("staff[1].role");
+    }
+
+    @Test
     void branchesNeedUniqueNames() {
         var bp = new TenantBlueprint(valid().business(), null,
                 List.of(new OnboardingBranch("Rohtak", null), new OnboardingBranch("ROHTAK", null), new OnboardingBranch(" ", null)),
@@ -116,6 +126,22 @@ class BlueprintValidatorTest {
         assertThat(v.problems()).isEmpty();
         assertThat(v.warnings()).anyMatch(w -> w.contains("Manager is a Branch Manager without a branch"))
                 .anyMatch(w -> w.contains("nobody will get new-enquiry alerts"));
+    }
+
+    @Test
+    void signinCodesAreCheckedAndAnAdminWithoutOneIsFlagged() {
+        var admin = new OnboardingStaff("Boss", "9876543210", null, "Admin", null, null, null, null, " 739164 ");
+        var weak = new OnboardingStaff("Weak", "9876543211", null, "Counsellor", null, null, null, null, "123456");
+        var v = BlueprintValidator.validate(new TenantBlueprint(valid().business(), null, null, List.of(admin, weak)));
+        assertThat(v.problems()).extracting(OnboardingProblem::field).containsExactly("staff[1].signinCode");
+        assertThat(v.staff().getFirst().signinCode()).isEqualTo("739164"); // trimmed
+        assertThat(v.staff().getFirst().toString()).doesNotContain("739164");
+
+        var noCode = BlueprintValidator.validate(new TenantBlueprint(valid().business(), null, null, ADMIN_ONLY));
+        assertThat(noCode.problems()).isEmpty();
+        assertThat(noCode.warnings()).anyMatch(w -> w.contains("No Admin has a sign-in code"));
+        assertThat(BlueprintValidator.validate(new TenantBlueprint(valid().business(), null, null, List.of(admin))).warnings())
+                .noneMatch(w -> w.contains("sign-in code"));
     }
 
     @Test

@@ -10,7 +10,7 @@ Multi-tenant CRM platform. Each customer business is a tenant; the first is **We
 | Staff UI | `frontend/` | Next.js 16, Tailwind v4, shadcn/ui, SWR, typed client generated from the OpenAPI spec | 3000 |
 
 Tenant websites are **not** in this repository. A tenant's own public site (e.g. Western World's, in
-[codewithnmn/westernworld-website](https://github.com/codewithnmn/westernworld-website)) lives in its own repo and talks
+[softzenith-projects/westernworld-website](https://github.com/softzenith-projects/westernworld-website)) lives in its own repo and talks
 to the CRM only through the public enquiry API (`/api/v1/public/tenants/{slug}/...`). Tenants without a site use the
 CRM's hosted enquiry page at `/enquiry/<slug>`.
 

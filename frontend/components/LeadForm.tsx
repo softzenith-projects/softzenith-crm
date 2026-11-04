@@ -71,14 +71,16 @@ export function LeadForm({ tenantSlug, defaultBranchId, onSaved, footer }: {
       </Field>
       {choice(form?.serviceInterests, "serviceInterest", "Interested in")}
       {choice(form?.countries, "preferredCountry", "Preferred country")}
-      <Field label="Branch" className="sm:col-span-2">
-        {/* Re-mounted once the branches arrive: a default value set before its option exists would be lost. */}
-        <NativeSelect name="branchId" defaultValue={defaultBranchId ?? ""} className="w-full"
-                      key={`${defaultBranchId}-${form?.branches?.length ?? 0}`}>
-          <NativeSelectOption value="">Select…</NativeSelectOption>
-          {form?.branches?.map((b) => <NativeSelectOption key={b.id} value={b.id}>{b.name}</NativeSelectOption>)}
-        </NativeSelect>
-      </Field>
+      {(form?.branches?.length ?? 0) > 0 && (
+        <Field label="Branch" className="sm:col-span-2">
+          {/* Re-mounted once the branches arrive: a default value set before its option exists would be lost. */}
+          <NativeSelect name="branchId" defaultValue={defaultBranchId ?? ""} className="w-full"
+                        key={`${defaultBranchId}-${form?.branches?.length ?? 0}`}>
+            <NativeSelectOption value="">Select…</NativeSelectOption>
+            {form?.branches?.map((b) => <NativeSelectOption key={b.id} value={b.id}>{b.name}</NativeSelectOption>)}
+          </NativeSelect>
+        </Field>
+      )}
       <Field label="Notes" className="sm:col-span-2"><Textarea name="message" rows={2} maxLength={2000} /></Field>
       <div className="flex items-center justify-end gap-2 sm:col-span-2">
         <ErrorText>{error}</ErrorText>
