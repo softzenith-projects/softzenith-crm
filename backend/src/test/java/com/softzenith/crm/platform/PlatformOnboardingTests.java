@@ -195,7 +195,7 @@ class PlatformOnboardingTests {
                                   "welcomeWhatsApp": true, "studentUpdates": true, "features": ["LEADS_CORE", "TEAM_AND_STUDENTS"]},
                      "branches": [{"name": "Rohtak", "city": "Rohtak"}, {"name": "Hisar", "city": "Hisar"}],
                      "staff": [{"fullName": "Anuj Kumar", "phone": "%s", "email": "anuj-%s@westernworld.test", "role": "Admin",
-                                "branch": "Rohtak", "designation": "Director"},
+                                "branch": "Rohtak", "designation": "Director", "signinCode": "739164"},
                                {"fullName": "Priya Sharma", "phone": "%s", "role": "Counsellor", "branch": "Hisar"}]}
                     """.formatted(slug, adminPhone, slug, counsellorPhone);
         }
@@ -209,6 +209,8 @@ class PlatformOnboardingTests {
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.ready").value(true))
                     .andExpect(jsonPath("$.summary.leadNumberExample").value("WWV-000001"))
+                    .andExpect(jsonPath("$.summary.staff[0].hasSigninCode").value(true))
+                    .andExpect(jsonPath("$.summary.staff[1].hasSigninCode").value(false))
                     .andExpect(jsonPath("$.summary.publicFormPath").value("/enquiry/" + slug))
                     .andExpect(jsonPath("$.summary.branches[0]").value("Rohtak (Rohtak)"))
                     .andExpect(jsonPath("$.summary.staff[1].role").value("Counsellor"))
@@ -263,6 +265,14 @@ class PlatformOnboardingTests {
                     .andExpect(jsonPath("$.role.code").value("ADMIN"))
                     .andExpect(jsonPath("$.branch.name").value("Rohtak"))
                     .andExpect(jsonPath("$.tenant.slug").value(slug));
+
+            // ...or, with no SMS or email provider at all, with the sign-in code set at onboarding (only its hash is kept).
+            mvc.perform(post("/api/v1/auth/phone-code").with(from(freshIp())).contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"phone\":\"%s\",\"code\":\"739164\"}".formatted(adminPhone)))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.accessToken").isNotEmpty());
+            assertThat(jdbc.sql("select signin_code_hash from app_users where phone_e164 = ?").param(adminPhone)
+                    .query(String.class).single()).startsWith("{bcrypt}").doesNotContain("739164");
 
             // A website enquiry becomes a lead numbered with the tenant's own prefix.
             var enquirer = TestData.phone();

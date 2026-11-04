@@ -126,7 +126,7 @@ public class TenantOnboardingService {
                 List.copyOf(roleNames.values()),
                 v.branches().stream().map(b -> b.city() == null ? b.name() : b.name() + " (" + b.city() + ")").toList(),
                 v.staff().stream().map(s -> new OnboardingStaffLine(s.fullName(), s.phoneE164(), roleNames.get(s.roleCode()),
-                        s.branchName())).toList(),
+                        s.branchName(), s.signinCode() != null)).toList(),
                 settings.enabledFeatures().stream().sorted().map(FeatureGate::name).toList());
     }
 }

@@ -23,7 +23,7 @@ const { session } = await import("@/lib/session");
 
 describe("Login (Supabase OTP)", () => {
   it("is the sign-in mode when Supabase is configured", () => {
-    expect(authMode).toBe("supabase");
+    expect(authMode()).toBe("supabase");
   });
 
   it("sends a code, verifies it and signs in with Supabase's token", async () => {

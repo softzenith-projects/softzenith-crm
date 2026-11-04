@@ -4,7 +4,6 @@ import com.softzenith.crm.identity.CurrentStaff;
 import com.softzenith.crm.identity.DataScope;
 import com.softzenith.crm.identity.StaffDirectory;
 import com.softzenith.crm.identity.StaffPrincipal;
-import com.softzenith.crm.identity.security.JwtClaims;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -36,7 +35,7 @@ class MeController {
     @GetMapping("/memberships")
     @Operation(summary = "Tenants the signed-in identity is staff of; call after sign-in to pick X-Tenant-ID")
     List<MembershipResponse> memberships(@AuthenticationPrincipal Jwt jwt) {
-        return directory.memberships(jwt.getSubject(), JwtClaims.verifiedPhone(jwt)).stream()
+        return directory.memberships(jwt).stream()
                 .map(MembershipResponse::from)
                 .toList();
     }

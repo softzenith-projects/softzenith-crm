@@ -28,6 +28,13 @@ public interface AppUserRepository extends JpaRepository<AppUser, UUID> {
     @Query("select u from AppUser u join fetch u.role left join fetch u.branch where u.authSubject = :subject")
     List<AppUser> findWithRoleByAuthSubject(String subject);
 
+    /** Enabled rows of this phone, in any tenant, that have a sign-in code. Call in system context. */
+    @Query("""
+            select u from AppUser u
+            where u.phoneE164 = :phone and u.signinCodeHash is not null
+              and u.status <> com.softzenith.crm.identity.UserStatus.DISABLED""")
+    List<AppUser> findWithSigninCodeByPhone(String phone);
+
     /** Invited rows not yet linked to an identity. Call in system context. */
     @Query("""
             select u from AppUser u join fetch u.role left join fetch u.branch

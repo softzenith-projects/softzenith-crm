@@ -1,0 +1,26 @@
+# Caddy gets and renews HTTPS certificates for each address by itself (the DNS records must point here first).
+
+# Staff app and SoftZenith console. The staff app forwards /api/* to the API inside the server.
+{$CRM_DOMAIN} {
+	encode zstd gzip
+	reverse_proxy web:3000
+}
+
+# Public API address, for tenant websites hosted elsewhere (Vercel). Only the public enquiry endpoints and the
+# health check are reachable here; staff endpoints are used through the staff app's address only.
+{$CRM_API_DOMAIN} {
+	encode zstd gzip
+	@public path /api/v1/public/* /actuator/health
+	handle @public {
+		reverse_proxy api:8081
+	}
+	handle {
+		respond "Not found" 404
+	}
+}
+
+# Test inbox (Mailpit asks for its own username and password).
+{$MAIL_DOMAIN} {
+	encode zstd gzip
+	reverse_proxy mailpit:8025
+}

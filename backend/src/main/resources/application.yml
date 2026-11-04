@@ -40,15 +40,6 @@ spring:
     port: ${MAIL_PORT:1025}
     username: ${MAIL_USERNAME:}
     password: ${MAIL_PASSWORD:}
-  security:
-    oauth2:
-      resourceserver:
-        jwt:
-          # Supabase Auth issues the tokens (phone OTP); we only verify them. Signing keys are fetched lazily.
-          issuer-uri: ${crm.auth.supabase-url}/auth/v1
-          jwk-set-uri: ${crm.auth.supabase-url}/auth/v1/.well-known/jwks.json
-          jws-algorithms: ES256, RS256
-          audiences: authenticated
 
 crm:
   public-intake:
@@ -61,6 +52,10 @@ crm:
     # Cloudflare Turnstile. Empty secret = captcha not required (local development).
     captcha:
       turnstile-secret: ${TURNSTILE_SECRET:}
+  trusted-proxy:
+    # Shared with tenant websites hosted elsewhere (e.g. Vercel) that forward enquiries from their own servers: with it
+    # they pass the visitor's address (X-Crm-Client-Ip) for the rate limits. Empty = those headers are ignored.
+    secret: ${CRM_TRUSTED_PROXY_SECRET:}
   app:
     # Links in emails point here
     frontend-url: ${FRONTEND_URL:http://localhost:3000}
@@ -72,8 +67,11 @@ crm:
     whatsapp:
       provider: demo
   auth:
-    # Placeholder until the real project exists; set SUPABASE_URL=https://<project-ref>.supabase.co
-    supabase-url: ${SUPABASE_URL:https://crm-dev-placeholder.supabase.co}
+    # Supabase Auth (https://<project-ref>.supabase.co): its tokens are also accepted when set (signing keys fetched
+    # lazily from its JWKS). Empty = staff sign in with phone + code only (identity.security.StaffTokenDecoders).
+    supabase-url: ${SUPABASE_URL:}
+    # Signs staff sessions from the phone + sign-in code login. Empty = a random key per start (sessions end on restart).
+    token-secret: ${CRM_AUTH_TOKEN_SECRET:}
   platform:
     # Signs SoftZenith platform-admin sessions (/api/platform). Empty = a random key per start (sessions end on restart).
     jwt-secret: ${CRM_PLATFORM_JWT_SECRET:}

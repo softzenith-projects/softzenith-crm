@@ -17,7 +17,10 @@ spring:
 
 crm:
   auth:
-    supabase-url: ${SUPABASE_URL}
+    # Optional: Supabase Auth (email sign-in, AUTH2). Phone + code sign-in works without it.
+    supabase-url: ${SUPABASE_URL:}
+    # Required: staff sessions must survive restarts and be the same on every instance.
+    token-secret: ${CRM_AUTH_TOKEN_SECRET}
   platform:
     # Required: platform-admin sessions must survive restarts and be the same on every instance.
     jwt-secret: ${CRM_PLATFORM_JWT_SECRET}
