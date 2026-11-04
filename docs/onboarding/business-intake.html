@@ -340,7 +340,7 @@ button.link { border: 0; background: none; color: var(--muted); padding: 6px; fo
       settings: {
         leadNumberPrefix: nul(s.prefix.toUpperCase()), serviceInterests: lines(s.services), countries: lines(s.countries),
         senderName: nul(s.senderName) || nul(s.bizName), welcomeEmail: s.welcomeEmail, welcomeWhatsApp: s.welcomeWhatsApp,
-        studentUpdates: s.studentUpdates, features: team ? ["LEADS_CORE", "TEAM_AND_STUDENTS"] : ["LEADS_CORE"]
+        studentUpdates: s.studentUpdates, replyTo: nul(s.replyTo), features: team ? ["LEADS_CORE", "TEAM_AND_STUDENTS"] : ["LEADS_CORE"]
       },
       branches: s.branches.map(function (b) { return { name: nul(b.name), city: nul(b.city) }; }),
       staff: s.staff.map(function (p) {
@@ -352,7 +352,7 @@ button.link { border: 0; background: none; color: var(--muted); padding: 6px; fo
         contact: { name: nul(s.contactName), phone: nul(s.contactPhone), email: nul(s.contactEmail) },
         website: nul(s.website),
         brand: { mainColour: nul(s.colorMain), secondColour: nul(s.colorSecond), tagline: nul(s.tagline),
-                 replyTo: nul(s.replyTo), crmAddress: s.address },
+                 crmAddress: s.address },
         team: { whoReceivesEnquiries: nul(s.whoReceives), whoChangesStatus: nul(s.whoStatus) },
         alerts: { newEnquiryAlerts: nul(s.alerts), googleSheet: nul(s.sheet) },
         technical: { websiteManagedBy: nul(s.webPerson), hostingAndDns: nul(s.hosting), emailProvider: nul(s.mailProvider),

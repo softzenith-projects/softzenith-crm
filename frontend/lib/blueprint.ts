@@ -21,7 +21,7 @@ export function emptyBlueprint(): Blueprint {
   return {
     business: { name: "", slug: "", defaultRegion: "IN", timezone: "Asia/Kolkata" },
     settings: {
-      leadNumberPrefix: "", serviceInterests: [], countries: [], senderName: "",
+      leadNumberPrefix: "", serviceInterests: [], countries: [], senderName: "", replyTo: "",
       welcomeEmail: true, welcomeWhatsApp: true, studentUpdates: true, features: ["LEADS_CORE", "TEAM_AND_STUDENTS"],
     },
     branches: [],
@@ -77,6 +77,7 @@ export function forSending(bp: Blueprint): Blueprint {
       ...bp.settings,
       leadNumberPrefix: blank(bp.settings?.leadNumberPrefix),
       senderName: blank(bp.settings?.senderName),
+      replyTo: blank(bp.settings?.replyTo),
     },
     branches: (bp.branches ?? []).map((b) => ({ name: b.name, city: blank(b.city) })),
     staff: (bp.staff ?? []).map((s) => ({ ...s, email: blank(s.email), branch: blank(s.branch),

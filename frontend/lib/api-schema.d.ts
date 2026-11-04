@@ -723,6 +723,7 @@ export interface components {
             welcomeWhatsApp?: boolean;
             studentUpdates?: boolean;
             features?: string[];
+            replyTo?: string;
         };
         OnboardingStaff: {
             fullName?: string;

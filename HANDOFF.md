@@ -1,4 +1,4 @@
-# Handoff — 2026-11-03 (IMPORT1: lead import from a spreadsheet; earlier ADMIN1, GO0, AUTH1, TRUST1)
+# Handoff — 2026-11-04 (MAIL2: reply-to per business, go-live day; earlier IMPORT1, ADMIN1, GO0, AUTH1, TRUST1)
 
 Project rules, stack, conventions and settled decisions: **`CLAUDE.md`**. This file is the current state.
 
@@ -68,11 +68,44 @@ spec: menu items appear only when their module exists (no fake counts).
 | LS1 | Lead sheet (owner, 16 Oct; stopgap for the Western World handover): every new / repeat enquiry is also appended to the business's Google Sheet via an Apps Script web app (`leadsheet` module, tenant setting `leadSheet`, `deploy/google-sheet/lead-sheet.gs`, `deploy/lead-sheet.sh`, `docs/lead-sheet.md`) | done (branch `feat/lead-sheet`); owner sets up the sheet |
 | ADMIN1 | Admin-only business for the first handover (owner, 30 Oct): without `TEAM_AND_STUDENTS` the Admin works every lead; staff, roles, branches, assignment refused and hidden | code done, uncommitted, **not deployed: staging server unreachable** |
 | GO1 | Rehearse on staging (`westernworld-test`), then onboard Western World on live (slug `westernworldvisaservices`), real branches + staff + codes, website pointed at `aimdesk-api`, end-to-end check | todo |
+| MAIL2 | Reply-to per business (owner, 4 Nov): tenant setting `notifications.replyTo`, set on every email; console field "Reply-to email"; the client setup form fills it | done; branch `feat/reply-to` |
 | IMPORT1 | Lead import from .xlsx / .csv (owner, 3 Nov; Western World's "Portal Data Pattern.xlsx"): Admin uploads, matches columns (+ service/country values), checks, imports; no alerts; V10 | done; PR #5 into develop |
 | BRAND1 | Product name **SoftCRM** (placeholder, owner 3 Nov; replaces AimDesk of 9 Oct until a final name) in the UI (title, login, shell); Java package rename not planned. Lowercase `aimdesk` server names (`/opt/aimdesk`, compose project, cron, planned domains) unchanged | todo |
 | later | Applications, offers, visa cases, IELTS/PTE, payments, reports (PRD Phases 4–5) | todo |
 
-## Session (latest): IMPORT1 — lead import from a spreadsheet (owner, 3 Nov)
+## Session (latest): MAIL2 — reply-to per business; go-live day (owner, 4 Nov)
+
+### What I built
+- `TenantSettings.Notifications` gains `replyTo` (5th component, blank = none; the old 4-argument constructor stays).
+  `Notifier.email` takes a `Sender(name, replyTo)`; `LeadNotifications.sender(tenant)` builds it; Reply-To is set only
+  when the business has one. All emails (student and staff) use it.
+- Onboarding: `OnboardingSettings.replyTo` (validated like an email, trimmed); wizard field "Reply-to email" next to the
+  sender name; `lib/blueprint.ts` sends it trimmed. `docs/onboarding/business-intake.html` now puts its existing
+  "Email students can reply to" answer in `settings.replyTo` (was in `intake.brand`). `docs/onboarding.md`: section
+  "Replies to a business's emails" with the SQL for a live business. `lib/api-schema.d.ts` edited by hand (one field)
+  rather than regenerated.
+- Tests: `NotificationRulesTests` (Reply-To present / absent), `BlueprintValidatorTest`, `TenantSettingsTest`,
+  `blueprint.test.ts`.
+
+### Go-live findings (4 Nov)
+- No separate live server: the EC2 "staging" server becomes Western World's live server (go-live Part A). It did not
+  answer on 4 Nov (health and login timed out). The demo seed never ran there (dev profile only).
+- Step-by-step page for today: https://claude.ai/artifact/BCvqMLB5ma32zYRefRbSKC (clean database, settings, deploy,
+  onboarding, website, test, import, safety).
+- Email: Google Workspace SMTP for today (owner's account `support@calrify.app`, primary domain `calrify.app`;
+  `softzenithlabs.com` is a second domain). DNS checked: MX Google, DKIM authenticating (owner confirmed in the admin
+  console), DMARC `p=none`, SPF `v=spf1 include:_spf.google.com ~all` added today. SES records already exist for a
+  custom MAIL FROM `send.softzenithlabs.com` in **ap-northeast-1 (Tokyo)**; SES production access status unknown.
+  SES later (MAIL1) is only a `.env` change.
+- Not tried yet: Gmail SMTP needs `SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH=true` and `..._STARTTLS_ENABLE=true` in
+  `deploy/.env` (Spring maps them to `spring.mail.properties.*`); check with the first real email.
+- Without `CRM_TRUSTED_PROXY_SECRET` every Vercel-forwarded enquiry shares one address and hits the 30/hour per-IP
+  limit; set it (and `CRM_PROXY_SECRET` on Vercel) before going live.
+
+### What I could NOT verify
+- Sending through Gmail, and the Reply-To on a real mail client (tests use GreenMail).
+
+## Session: IMPORT1 — lead import from a spreadsheet (owner, 3 Nov)
 
 Owner's decision: the business's Admin imports their own data (we can do it for them by signing in as their Admin);
 the column matching is a step of the upload screen, not a settings page.
@@ -182,7 +215,9 @@ the column matching is a step of the upload screen, not a settings page.
 - Uncommitted on `feat/lead-sheet` (on top of `28a2eea`), which contains `feat/staging-deploy`. Commit on a new `feat/admin-only` branch from here, not from `develop`: `develop` has neither the deploy files nor the lead sheet.
 
 ## Next action
-- Owner starts the EC2 instance. Then push, `deploy/deploy.sh feat/admin-only` on the server, and onboard Western World per `docs/staging-deploy.md` step 9 (or apply the `docs/onboarding.md` update if it already exists).
+- Follow https://claude.ai/artifact/BCvqMLB5ma32zYRefRbSKC: owner starts the EC2 instance; merge `feat/reply-to` into
+  develop; clean database; `.env` (proxy secret, Gmail); `deploy/deploy.sh develop`; onboard Western World with their
+  reply-to address; Vercel env; test; import their filled file.
 
 ## Session: GO0 — go-live runbook for today (owner, 16 Oct)
 

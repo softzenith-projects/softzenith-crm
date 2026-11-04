@@ -42,6 +42,21 @@ docker compose exec -T db sh -c 'psql -U "$POSTGRES_USER" -d crm -c "update tena
 Use `[\"LEADS_CORE\"]` to make an existing business Admin-only. That hides the screens, but anyone already added as staff
 can still sign in, so disable them first, while Staff is still visible.
 
+## Replies to a business's emails
+
+Every email is sent from the platform's address (`MAIL_FROM`, e.g. `noreply@softzenithlabs.com`) with the business's
+name as the sender. Set **Reply-to email** (Enquiry form step) to the business's own inbox, so students' replies go to
+the business and not to us. Without it, replies go to `MAIL_FROM`.
+
+For a business that is already live (the console cannot change it yet):
+
+```bash
+cd /opt/aimdesk/deploy
+docker compose exec -T db psql -U crm_app -d crm -c "update tenants set settings = jsonb_set(settings, '{notifications,replyTo}', to_jsonb('info@business.com'::text)) where slug = '<slug>' returning slug, settings->'notifications'"
+```
+
+The next email uses it; no restart needed.
+
 ## Steps
 
 1. Sign in to the SoftZenith console at **`/platform`** with the platform admin username and password

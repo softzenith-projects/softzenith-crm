@@ -78,10 +78,20 @@ class BlueprintValidatorTest {
     @Test
     void settingsAreChecked() {
         var bp = new TenantBlueprint(valid().business(),
-                new OnboardingSettings("1ABC", null, null, "x".repeat(101), null, null, null, Set.of("TEAM_AND_STUDENTS", "TELEPORT")),
+                new OnboardingSettings("1ABC", null, null, "x".repeat(101), null, null, null, Set.of("TEAM_AND_STUDENTS", "TELEPORT"),
+                        "info at westernworld"),
                 null, ADMIN_ONLY);
         assertThat(fields(bp)).containsExactlyInAnyOrder(
-                "settings.leadNumberPrefix", "settings.senderName", "settings.features", "settings.features");
+                "settings.leadNumberPrefix", "settings.senderName", "settings.features", "settings.features", "settings.replyTo");
+    }
+
+    @Test
+    void theReplyToAddressIsKeptTrimmed() {
+        var settings = new OnboardingSettings("WWV", null, null, null, null, null, null, Set.of("LEADS_CORE"),
+                " info@westernworldvisaservices.com ");
+        var validated = BlueprintValidator.validate(new TenantBlueprint(valid().business(), settings, null, ADMIN_ONLY));
+        assertThat(validated.problems()).isEmpty();
+        assertThat(validated.settings().notifications().replyTo()).isEqualTo("info@westernworldvisaservices.com");
     }
 
     @Test
