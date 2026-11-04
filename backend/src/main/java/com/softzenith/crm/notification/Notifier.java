@@ -55,7 +55,11 @@ class Notifier {
         this.enquirerDailyCap = enquirerDailyCap;
     }
 
-    void email(UUID eventId, UUID leadId, Kind kind, String to, String senderName, String template, Map<String, Object> model) {
+    /** Who an email is from: the business's name (on the platform's address) and where replies go (null = that address). */
+    record Sender(String name, String replyTo) {
+    }
+
+    void email(UUID eventId, UUID leadId, Kind kind, String to, Sender sender, String template, Map<String, Object> model) {
         if (alreadyDelivered(eventId, Channel.EMAIL, kind, to)) {
             return;
         }
@@ -69,7 +73,10 @@ class Notifier {
         try {
             var mime = mail.createMimeMessage();
             var helper = new MimeMessageHelper(mime, StandardCharsets.UTF_8.name());
-            helper.setFrom(new InternetAddress(fromAddress, senderName, StandardCharsets.UTF_8.name()));
+            helper.setFrom(new InternetAddress(fromAddress, sender.name(), StandardCharsets.UTF_8.name()));
+            if (sender.replyTo() != null) {
+                helper.setReplyTo(sender.replyTo());
+            }
             helper.setTo(to);
             helper.setSubject(message.subject());
             helper.setText(message.body(), false);

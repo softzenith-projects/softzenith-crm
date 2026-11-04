@@ -21,6 +21,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 @IntegrationTest
 class NotifierTests {
 
+    private static final Notifier.Sender ACME = new Notifier.Sender("Acme", null);
+
     @RegisterExtension
     static GreenMailExtension mail = new GreenMailExtension(ServerSetupTest.SMTP);
 
@@ -44,8 +46,8 @@ class NotifierTests {
     void aReDeliveredEventDoesNotSendAgain() {
         var eventId = UUID.randomUUID();
         var to = "once-" + UUID.randomUUID() + "@mail.test";
-        send(() -> notifier.email(eventId, null, NotificationLog.Kind.LEAD_WELCOME, to, "Acme", "lead-welcome-email", model));
-        send(() -> notifier.email(eventId, null, NotificationLog.Kind.LEAD_WELCOME, to, "Acme", "lead-welcome-email", model));
+        send(() -> notifier.email(eventId, null, NotificationLog.Kind.LEAD_WELCOME, to, ACME, "lead-welcome-email", model));
+        send(() -> notifier.email(eventId, null, NotificationLog.Kind.LEAD_WELCOME, to, ACME, "lead-welcome-email", model));
 
         assertThat(rowsTo(to)).extracting(n -> n.getStatus()).containsExactly(NotificationLog.Status.SENT);
     }
@@ -54,14 +56,14 @@ class NotifierTests {
     void messagesToOneEnquirerAreCappedPerDayButStaffAlertsAreNot() {
         var to = "target-" + UUID.randomUUID() + "@mail.test";
         for (int i = 0; i < 6; i++) {
-            send(() -> notifier.email(UUID.randomUUID(), null, NotificationLog.Kind.LEAD_WELCOME, to, "Acme", "lead-welcome-email", model));
+            send(() -> notifier.email(UUID.randomUUID(), null, NotificationLog.Kind.LEAD_WELCOME, to, ACME, "lead-welcome-email", model));
         }
         assertThat(rowsTo(to)).extracting(n -> n.getStatus()).containsOnly(NotificationLog.Status.SENT, NotificationLog.Status.SKIPPED)
                 .filteredOn(s -> s == NotificationLog.Status.SKIPPED).hasSize(1);
 
         var staff = "staff-" + UUID.randomUUID() + "@acme.test";
         for (int i = 0; i < 6; i++) {
-            send(() -> notifier.email(UUID.randomUUID(), null, NotificationLog.Kind.NEW_LEAD_ALERT, staff, "Acme",
+            send(() -> notifier.email(UUID.randomUUID(), null, NotificationLog.Kind.NEW_LEAD_ALERT, staff, ACME,
                     "new-lead-alert-email", model));
         }
         assertThat(rowsTo(staff)).extracting(n -> n.getStatus()).containsOnly(NotificationLog.Status.SENT).hasSize(6);
@@ -70,7 +72,7 @@ class NotifierTests {
     @Test
     void templateValuesCannotBreakOutOfTheSubjectLine() {
         var to = "subject-" + UUID.randomUUID() + "@mail.test";
-        send(() -> notifier.email(UUID.randomUUID(), null, NotificationLog.Kind.NEW_LEAD_ALERT, to, "Acme", "new-lead-alert-email",
+        send(() -> notifier.email(UUID.randomUUID(), null, NotificationLog.Kind.NEW_LEAD_ALERT, to, ACME, "new-lead-alert-email",
                 model("Asha\nPay your fees at evil.example")));
         var row = rowsTo(to).getFirst();
         assertThat(row.getSubject()).isEqualTo("New lead LD-1: Asha Pay your fees at evil.example");
@@ -95,8 +97,8 @@ class NotifierTests {
     @Test
     void messagesWithoutAnEventAreNeverTreatedAsDuplicates() {
         var to = "no-event-" + UUID.randomUUID() + "@mail.test";
-        send(() -> notifier.email(null, null, NotificationLog.Kind.NEW_LEAD_ALERT, to, "Acme", "new-lead-alert-email", model));
-        send(() -> notifier.email(null, null, NotificationLog.Kind.NEW_LEAD_ALERT, to, "Acme", "new-lead-alert-email", model));
+        send(() -> notifier.email(null, null, NotificationLog.Kind.NEW_LEAD_ALERT, to, ACME, "new-lead-alert-email", model));
+        send(() -> notifier.email(null, null, NotificationLog.Kind.NEW_LEAD_ALERT, to, ACME, "new-lead-alert-email", model));
         assertThat(rowsTo(to)).hasSize(2);
     }
 

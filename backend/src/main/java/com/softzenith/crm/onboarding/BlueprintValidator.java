@@ -106,6 +106,10 @@ final class BlueprintValidator {
         if (sender != null && sender.length() > 100) {
             problem("settings.senderName", "Email sender name: at most 100 characters");
         }
+        var replyTo = trim(s.replyTo());
+        if (replyTo != null && (replyTo.length() > 254 || !EMAIL.matcher(replyTo).matches())) {
+            problem("settings.replyTo", "Reply-to email: not a valid email address");
+        }
         Set<FeatureGate> features = null;
         if (s.features() != null) {
             features = EnumSet.noneOf(FeatureGate.class);
@@ -121,7 +125,7 @@ final class BlueprintValidator {
             }
         }
         return new TenantSettings(prefix, new TenantSettings.EnquiryForm(services, countries),
-                new TenantSettings.Notifications(sender, s.welcomeEmail(), s.welcomeWhatsApp(), s.studentUpdates()), features);
+                new TenantSettings.Notifications(sender, s.welcomeEmail(), s.welcomeWhatsApp(), s.studentUpdates(), replyTo), features);
     }
 
     private List<String> options(List<String> raw, String field, String label) {

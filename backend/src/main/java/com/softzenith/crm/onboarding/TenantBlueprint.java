@@ -23,7 +23,14 @@ public record TenantBlueprint(OnboardingBusiness business, OnboardingSettings se
     /** See {@code tenancy.TenantSettings}; null means the platform default. */
     public record OnboardingSettings(String leadNumberPrefix, List<String> serviceInterests, List<String> countries,
                                      String senderName, Boolean welcomeEmail, Boolean welcomeWhatsApp,
-                                     Boolean studentUpdates, Set<String> features) {
+                                     Boolean studentUpdates, Set<String> features, String replyTo) {
+
+        public OnboardingSettings(String leadNumberPrefix, List<String> serviceInterests, List<String> countries,
+                                  String senderName, Boolean welcomeEmail, Boolean welcomeWhatsApp,
+                                  Boolean studentUpdates, Set<String> features) {
+            this(leadNumberPrefix, serviceInterests, countries, senderName, welcomeEmail, welcomeWhatsApp, studentUpdates,
+                    features, null);
+        }
     }
 
     public record OnboardingBranch(String name, String city) {

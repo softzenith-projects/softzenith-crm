@@ -177,6 +177,10 @@ export function OnboardingWizard() {
               <Field label="Email sender name" hint=" (defaults to the business name)">
                 <Input value={settings.senderName ?? ""} onChange={(e) => setSettings({ senderName: e.target.value })} />
               </Field>
+              <Field label="Reply-to email" hint=" (the business's own inbox; students' replies go here)">
+                <Input type="email" value={settings.replyTo ?? ""} onChange={(e) => setSettings({ replyTo: e.target.value })}
+                       placeholder="info@business.com" />
+              </Field>
               <Field label="Services offered" hint=" (one per line; shown on the enquiry form)">
                 <Textarea rows={6} defaultValue={(settings.serviceInterests ?? []).join("\n")} key={`s-${(settings.serviceInterests ?? []).join("|")}`}
                           onBlur={(e) => setSettings({ serviceInterests: lines(e.target.value) })} />

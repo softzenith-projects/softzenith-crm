@@ -115,7 +115,7 @@ class LeadNotifications {
         welcome.put("serviceInterest", offered(e.serviceInterest(), form.serviceInterests()));
         welcome.put("preferredCountry", offered(e.preferredCountry(), form.countries()));
         if (settings.welcomeEmail() && e.email() != null) {
-            notifier.email(e.eventId(), e.leadId(), Kind.LEAD_WELCOME, e.email(), senderName(tenant), "lead-welcome-email", welcome);
+            notifier.email(e.eventId(), e.leadId(), Kind.LEAD_WELCOME, e.email(), sender(tenant), "lead-welcome-email", welcome);
         }
         if (settings.welcomeWhatsApp()) {
             notifier.whatsApp(e.eventId(), e.leadId(), Kind.LEAD_WELCOME, e.phoneE164(), "lead-welcome-whatsapp", welcome);
@@ -130,7 +130,7 @@ class LeadNotifications {
             if (recipient.email() != null) {
                 var personal = new HashMap<>(model);
                 personal.put("recipientName", recipient.fullName());
-                notifier.email(e.eventId(), e.leadId(), Kind.NEW_LEAD_ALERT, recipient.email(), senderName(tenant), "new-lead-alert-email", personal);
+                notifier.email(e.eventId(), e.leadId(), Kind.NEW_LEAD_ALERT, recipient.email(), sender(tenant), "new-lead-alert-email", personal);
             }
         }
     }
@@ -141,7 +141,7 @@ class LeadNotifications {
         assignee.filter(u -> u.email() != null).ifPresent(u -> {
             var model = baseModel(tenant, e.leadId(), e.leadNumber(), e.fullName(), e.phoneE164(), e.email());
             model.put("recipientName", u.fullName());
-            notifier.email(e.eventId(), e.leadId(), Kind.LEAD_ASSIGNED, u.email(), senderName(tenant), "lead-assigned-email", model);
+            notifier.email(e.eventId(), e.leadId(), Kind.LEAD_ASSIGNED, u.email(), sender(tenant), "lead-assigned-email", model);
         });
         assignee.ifPresent(u -> {
             var model = baseModel(tenant, e.leadId(), e.leadNumber(), e.fullName(), e.phoneE164(), e.email());
@@ -183,7 +183,7 @@ class LeadNotifications {
             if (recipient.email() != null) {
                 var personal = new HashMap<>(model);
                 personal.put("recipientName", recipient.fullName());
-                notifier.email(e.eventId(), e.leadId(), Kind.REPEAT_ENQUIRY_ALERT, recipient.email(), senderName(tenant),
+                notifier.email(e.eventId(), e.leadId(), Kind.REPEAT_ENQUIRY_ALERT, recipient.email(), sender(tenant),
                         "repeat-enquiry-alert-email", personal);
             }
         }
@@ -197,7 +197,7 @@ class LeadNotifications {
             return;
         }
         if (email != null) {
-            notifier.email(eventId, leadId, kind, email, senderName(tenant), templatePrefix + "-email", model);
+            notifier.email(eventId, leadId, kind, email, sender(tenant), templatePrefix + "-email", model);
         }
         notifier.whatsApp(eventId, leadId, kind, phone, templatePrefix + "-whatsapp", model);
     }
@@ -231,8 +231,11 @@ class LeadNotifications {
         return value == null ? null : options.stream().filter(value::equalsIgnoreCase).findFirst().orElse(null);
     }
 
-    private static String senderName(Tenant tenant) {
-        var configured = tenant.getSettings().notifications().senderName();
-        return configured == null || configured.isBlank() ? tenant.getName() : configured;
+    /** The business's name as the email "From" name (on the platform's address), and its reply-to address. */
+    private static Notifier.Sender sender(Tenant tenant) {
+        var notifications = tenant.getSettings().notifications();
+        var configured = notifications.senderName();
+        return new Notifier.Sender(configured == null || configured.isBlank() ? tenant.getName() : configured,
+                notifications.replyTo());
     }
 }

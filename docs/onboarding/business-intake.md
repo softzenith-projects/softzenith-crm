@@ -121,7 +121,7 @@ will set up a trial version for you to check before going live.
 |---|---|---|
 | Business name, short name, country/time zone | Console → Business (`business.name`, `slug`, `defaultRegion`, `timezone`) | Supported |
 | Services, countries, lead prefix | Console → Enquiry form (`settings.serviceInterests`, `countries`, `leadNumberPrefix`) | Supported |
-| Sender name, welcome email/WhatsApp, student updates | `settings.senderName`, `welcomeEmail`, `welcomeWhatsApp`, `studentUpdates` | Supported (WhatsApp is demo only) |
+| Sender name, reply-to email, welcome email/WhatsApp, student updates | `settings.senderName`, `replyTo`, `welcomeEmail`, `welcomeWhatsApp`, `studentUpdates` | Supported (WhatsApp is demo only). Emails are sent from the platform's `MAIL_FROM`; replies go to `replyTo` |
 | Branches | Console → Branches (`branches[]`: name, city) | Supported |
 | Staff | Console → Staff (`staff[]`); the first Admin needs a sign-in code | Supported |
 | Roles used | Features: Admin only → `LEADS_CORE`; any team → add `TEAM_AND_STUDENTS` | Supported |
@@ -130,7 +130,6 @@ will set up a trial version for you to check before going live.
 | Google Sheet | `settings.leadSheet` via `deploy/lead-sheet.sh` (`docs/lead-sheet.md`) | Supported (by us, not the console) |
 | Logo, colours, tagline | Tenant branding settings | **Not built**: task A2 |
 | CRM address (own name / own domain) | Subdomain or custom domain per business | **Not built**; standard address only |
-| Reply-to email | — | **Not built** (sender is the platform's `MAIL_FROM`) |
 | Message wording | Shared Mustache templates | Per-business wording: not supported |
 | Website, DNS, email provider, Meta | `docs/go-live.md` (domain switch, email, WhatsApp) | Manual steps |
 | Existing enquiries to import | — | **No import yet**; plan per business |

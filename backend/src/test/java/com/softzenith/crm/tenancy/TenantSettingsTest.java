@@ -41,6 +41,12 @@ class TenantSettingsTest {
     }
 
     @Test
+    void aBlankReplyToMeansNone() {
+        assertThat(new TenantSettings.Notifications(null, null, null, null, "  ").replyTo()).isNull();
+        assertThat(TenantSettings.defaults().notifications().replyTo()).isNull();
+    }
+
+    @Test
     void anExplicitEmptyFeatureSetMeansNoFeatures() {
         assertThat(new TenantSettings(null, null, null, Set.of()).enabledFeatures()).isEmpty();
     }
@@ -48,7 +54,8 @@ class TenantSettingsTest {
     @Test
     void settingsRoundTripThroughJson() {
         var settings = new TenantSettings("WWV", new TenantSettings.EnquiryForm(List.of("Study Abroad"), List.of("Canada")),
-                new TenantSettings.Notifications("Western World", true, false, true), Set.of(FeatureGate.LEADS_CORE));
+                new TenantSettings.Notifications("Western World", true, false, true, "info@westernworld.test"),
+                Set.of(FeatureGate.LEADS_CORE));
         var back = converter.convertToEntityAttribute(converter.convertToDatabaseColumn(settings));
         assertThat(back).isEqualTo(settings);
     }
