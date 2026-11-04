@@ -69,12 +69,21 @@ public record TenantSettings(String leadNumberPrefix, EnquiryForm enquiryForm, N
      * @param welcomeWhatsApp send the enquirer a welcome WhatsApp (default true)
      * @param studentUpdates  tell the enquirer (email + WhatsApp) when their enquiry is assigned, changes status,
      *                        or when they enquire again (default true)
+     * @param replyTo         the business's own address that replies to its emails go to (they are sent from the
+     *                        platform's address); null = replies go to the sending address
      */
-    public record Notifications(String senderName, Boolean welcomeEmail, Boolean welcomeWhatsApp, Boolean studentUpdates) {
+    public record Notifications(String senderName, Boolean welcomeEmail, Boolean welcomeWhatsApp, Boolean studentUpdates,
+                                String replyTo) {
         public Notifications {
             welcomeEmail = welcomeEmail == null || welcomeEmail;
             welcomeWhatsApp = welcomeWhatsApp == null || welcomeWhatsApp;
             studentUpdates = studentUpdates == null || studentUpdates;
+            replyTo = replyTo == null || replyTo.isBlank() ? null : replyTo.strip();
+        }
+
+        /** Notifications without a reply-to address. */
+        public Notifications(String senderName, Boolean welcomeEmail, Boolean welcomeWhatsApp, Boolean studentUpdates) {
+            this(senderName, welcomeEmail, welcomeWhatsApp, studentUpdates, null);
         }
     }
 }

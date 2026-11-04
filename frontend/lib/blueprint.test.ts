@@ -52,9 +52,16 @@ describe("forSending", () => {
     const sent = forSending(bp);
     expect(sent.business).toMatchObject({ name: "Western World", slug: undefined, defaultRegion: "IN" });
     expect(sent.settings?.leadNumberPrefix).toBeUndefined();
+    expect(sent.settings?.replyTo).toBeUndefined();
     expect(sent.branches).toEqual([{ name: "", city: undefined }]);
     expect(sent.staff).toHaveLength(1);
     expect(sent.staff![0].email).toBeUndefined();
+  });
+
+  it("sends the reply-to address trimmed", () => {
+    const bp = emptyBlueprint();
+    bp.settings = { ...bp.settings, replyTo: " info@westernworldvisaservices.com " };
+    expect(forSending(bp).settings?.replyTo).toBe("info@westernworldvisaservices.com");
   });
 });
 

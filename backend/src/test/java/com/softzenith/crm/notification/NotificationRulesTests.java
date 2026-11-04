@@ -113,6 +113,31 @@ class NotificationRulesTests {
     }
 
     @Test
+    void repliesGoToTheBusinessesOwnAddressWhenItHasOne() throws Exception {
+        var tenant = fixtures.tenant(new TenantSettings(null, null,
+                new TenantSettings.Notifications(null, null, null, null, " info@westernworld.test "), null));
+        var admin = fixtures.staff(tenant, DefaultRoles.ADMIN);
+        var email = "reply-" + UUID.randomUUID().toString().substring(0, 8) + "@mail.test";
+        enquire(tenant, admin, "Reply Test", email);
+
+        await().atMost(Duration.ofSeconds(15)).untilAsserted(() -> assertThat(Arrays.stream(mail.getReceivedMessages())
+                .filter(m -> recipients(m).contains(email))
+                .map(NotificationRulesTests::replyTo)).containsExactly("[info@westernworld.test]"));
+    }
+
+    @Test
+    void withoutAReplyToAddressRepliesGoToTheSender() throws Exception {
+        var tenant = fixtures.tenant();
+        var admin = fixtures.staff(tenant, DefaultRoles.ADMIN);
+        var email = "noreply-" + UUID.randomUUID().toString().substring(0, 8) + "@mail.test";
+        enquire(tenant, admin, "No Reply Test", email);
+
+        await().atMost(Duration.ofSeconds(15)).untilAsserted(() -> assertThat(Arrays.stream(mail.getReceivedMessages())
+                .filter(m -> recipients(m).contains(email))
+                .map(NotificationRulesTests::replyToHeader)).isNotEmpty().containsOnlyNulls());
+    }
+
+    @Test
     void aRepeatEnquiryOnALeadWhoseCounsellorWasDisabledAlertsTheNewLeadStaff() throws Exception {
         var tenant = fixtures.tenant();
         var admin = fixtures.staff(tenant, DefaultRoles.ADMIN);
@@ -181,6 +206,22 @@ class NotificationRulesTests {
             return Arrays.toString(m.getAllRecipients());
         } catch (Exception e) {
             return "";
+        }
+    }
+
+    private static String replyTo(jakarta.mail.Message m) {
+        try {
+            return Arrays.toString(m.getReplyTo());
+        } catch (Exception e) {
+            return "";
+        }
+    }
+
+    private static String[] replyToHeader(jakarta.mail.Message m) {
+        try {
+            return m.getHeader("Reply-To");
+        } catch (Exception e) {
+            return new String[] {"unreadable"};
         }
     }
 
