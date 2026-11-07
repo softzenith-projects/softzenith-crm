@@ -45,6 +45,18 @@ spring:
     port: ${MAIL_PORT:1025}
     username: ${MAIL_USERNAME:}
     password: ${MAIL_PASSWORD:}
+    # Real SMTP (e.g. Google Workspace on 587): MAIL_SMTP_AUTH=true and MAIL_STARTTLS=true. Off for Mailpit / GreenMail.
+    # Timeouts so a slow provider cannot hold a notification thread for ever.
+    properties:
+      mail:
+        smtp:
+          auth: ${MAIL_SMTP_AUTH:false}
+          starttls:
+            enable: ${MAIL_STARTTLS:false}
+            required: ${MAIL_STARTTLS:false}
+          connectiontimeout: 10000
+          timeout: 10000
+          writetimeout: 10000
 
 crm:
   public-intake:

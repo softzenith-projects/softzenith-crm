@@ -14,6 +14,11 @@ spring:
     url: ${DB_URL}
     username: ${DB_USER}
     password: ${DB_PASSWORD}
+  # Migrations run as the database owner when deploy/.env names one (prod: DB_MIGRATION_USER, see
+  # deploy/db-init/10-roles.sh); the app itself then only reads and writes rows. Without it, the app login migrates.
+  flyway:
+    user: ${DB_MIGRATION_USER:${DB_USER}}
+    password: ${DB_MIGRATION_PASSWORD:${DB_PASSWORD}}
 
 crm:
   auth:

@@ -1,0 +1,8 @@
+# Staging: the staff app, the public API address and the test inbox.
+import /etc/caddy/sites.caddy
+
+# Test inbox (Mailpit asks for its own username and password).
+{$MAIL_DOMAIN} {
+	encode zstd gzip
+	reverse_proxy mailpit:8025
+}
