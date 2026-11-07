@@ -1,4 +1,4 @@
-# Handoff — 2026-11-04 (MAIL2: reply-to per business, go-live day; earlier IMPORT1, ADMIN1, GO0, AUTH1, TRUST1)
+# Handoff — 2026-11-07 (PROD1–3: prod packaging, database roles, S3 backups; earlier PROD0, MAIL2; earlier IMPORT1, ADMIN1, GO0, AUTH1, TRUST1)
 
 Project rules, stack, conventions and settled decisions: **`CLAUDE.md`**. This file is the current state.
 
@@ -70,10 +70,120 @@ spec: menu items appear only when their module exists (no fake counts).
 | GO1 | Rehearse on staging (`westernworld-test`), then onboard Western World on live (slug `westernworldvisaservices`), real branches + staff + codes, website pointed at `aimdesk-api`, end-to-end check | todo |
 | MAIL2 | Reply-to per business (owner, 4 Nov): tenant setting `notifications.replyTo`, set on every email; console field "Reply-to email"; the client setup form fills it | done; branch `feat/reply-to` |
 | IMPORT1 | Lead import from .xlsx / .csv (owner, 3 Nov; Western World's "Portal Data Pattern.xlsx"): Admin uploads, matches columns (+ service/country values), checks, imports; no alerts; V10 | done; PR #5 into develop |
+| PROD0 | **Separate prod for all tenants** (owner, 6 Nov): `crm[-api].softzenithlabs.com` on **OCI Mumbai** (existing Pay As You Go account shared with Untiered, own compartment `softcrm-prod`), A1 1 OCPU / 6 GB / 50 GB, releases from `main`, backups to AWS S3; `crm-staging` (AWS EC2 Sydney) = test data only. Western World starts clean on prod; its staging data is test data. Plan + cost: `docs/prod-deploy-oci.md`, page https://claude.ai/artifact/Uf5HCsJ3i27ir4AciJ41Ng. Replaces DEPLOY2's Lightsail live server and the `aimdesk` names | infra done (OCI by Claude 6 Nov; DNS, MFA by owner; S3 by Claude 7 Nov); deploy after the release |
+| PROD1 | Prod packaging: `deploy/prod.env.example`, `setup-env.sh staging\|prod`, Mailpit + mail address staging-only (Compose profile, split Caddyfile), memory sizing for 6 GB (also keeps OCI's idle rule off) | done, branch `feat/prod-deploy` (uncommitted); tried on the prod server |
+| PROD2 | Database roles: migration owner + non-superuser `crm_app` (today `crm_app` is the image's superuser) | done for new databases (prod); staging keeps one role until rebuilt; same branch |
+| PROD3 | `backup.sh` → S3 with a write-only key; tested restore | done (`restore-check.sh`); same branch |
+| PROD4 | Postgres RLS on every tenant table (was in T8), after PROD2 | todo |
 | BRAND1 | Product name **SoftCRM** (placeholder, owner 3 Nov; replaces AimDesk of 9 Oct until a final name) in the UI (title, login, shell); Java package rename not planned. Lowercase `aimdesk` server names (`/opt/aimdesk`, compose project, cron, planned domains) unchanged | todo |
 | later | Applications, offers, visa cases, IELTS/PTE, payments, reports (PRD Phases 4–5) | todo |
 
-## Session (latest): MAIL2 — reply-to per business; go-live day (owner, 4 Nov)
+## Session (latest): PROD1–3 — prod packaging, database roles, backups to S3 (owner, 7 Nov)
+
+Branch `feat/prod-deploy` from `develop` (7c64c53), in a separate worktree `../CRM-prod`, so the owner's uncommitted
+OTHER1 work on `feat/other-option` is untouched. Not committed (commit when the owner asks).
+
+### What I built
+- `DEPLOY_ENV=staging|prod` in `deploy/.env` picks the environment. `deploy/prod.env.example` (crm / crm-api,
+  Google Workspace SMTP on 587, three DB roles, 6 GB memory, S3 bucket); `staging.env.example` gains `DEPLOY_ENV`,
+  `COMPOSE_PROFILES=staging` and a generated `CRM_TRUSTED_PROXY_SECRET`.
+- `setup-env.sh staging|prod`: fills `# GENERATED` values with random secrets; `# ASK` / `# ASK-SECRET` values come
+  from an environment variable, a prompt (hidden for secrets), or stay empty and are listed. `env-set.sh NAME` sets
+  one value later without echo.
+- Mailpit is staging-only (Compose profile `staging`); Caddy config split into `caddy/sites.caddy` +
+  `staging.Caddyfile` (adds the test inbox) / `prod.Caddyfile`, chosen by `DEPLOY_ENV`. `deploy.sh` adds
+  `DEPLOY_ENV=staging` + `COMPOSE_PROFILES=staging` to an old staging `.env` (detected by `MAIL_HOST=mailpit`) and
+  refuses non-`main` branches on prod (`ALLOW_NON_MAIN=1` overrides).
+- Postgres memory from `.env` (`PG_SHARED_BUFFERS`, `PG_EFFECTIVE_CACHE_SIZE`, `PG_MAX_CONNECTIONS`; defaults = the
+  old staging values, `effective_cache_size` default 4GB = Postgres' own).
+- PROD2 `deploy/db-init/10-roles.sh` (first start of an empty volume only): superuser `postgres` rejected over TCP in
+  `pg_hba` (socket only, for `docker compose exec`), owner `crm_owner` (owns database + `public`, runs Flyway via
+  `spring.flyway.user/password` = `DB_MIGRATION_USER/PASSWORD` in `application-prod.yml`, falling back to `DB_USER`),
+  app `crm_app` (SELECT/INSERT/UPDATE/DELETE + sequences by default privileges; no CREATE). The API's env still
+  contains every `.env` value (`env_file`), hence the `pg_hba` reject for the superuser.
+- `application.yml`: `MAIL_SMTP_AUTH` / `MAIL_STARTTLS` (default false: Mailpit, GreenMail) and 10 s SMTP timeouts.
+- PROD3 `backup.sh`: checks each dump with `pg_restore --list`, uploads to `s3://$S3_BACKUP_BUCKET/$DEPLOY_ENV/` via
+  the `amazon/aws-cli:2.39.5` image with `~/.aws` profile `S3_BACKUP_PROFILE`. `restore-check.sh` restores the
+  newest (or a given) dump into a scratch database, prints migrations/tables/businesses/staff/leads, drops it.
+- `deploy/README.md` rewritten (staging vs prod table, S3 restore); `docs/prod-deploy-oci.md` moved into this branch
+  (it was untracked in the OTHER1 checkout, removed there along with the PROD rows/section of its HANDOFF).
+
+### Verified
+- `./mvnw test` passes locally.
+- On the prod server in a throwaway `/opt/softcrm-test` (Compose project `softcrm-test`), built from this working
+  tree: `setup-env.sh prod` (no terminal: MAIL_USERNAME/PASSWORD listed as empty), images built (api 625 MB, web
+  324 MB, arm64), stack up; HTTPS certificates for `crm` and `crm-api`; `/login` and `/platform` 200, staff path on
+  `crm-api` 404; `10-roles.sh` ran; API connected as `crm_app` (not superuser), Flyway as `crm_owner`, 15 tables
+  owned by `crm_owner`, `crm_app` cannot create tables, superuser refused over TCP even with its password;
+  `backup.sh` uploaded to S3; `restore-check.sh` ok (10 migrations, 15 tables). Old staging `.env` (no DEPLOY_ENV):
+  `deploy.sh` added the two lines, `docker compose config` shows mailpit + staging.Caddyfile + single role; both
+  Caddyfiles pass `caddy validate`. Then: test object removed from S3, test stack and volumes removed,
+  `/opt/softcrm-test` deleted. Built images `aimdesk-api`/`aimdesk-web` left on the server (layer cache).
+- Health is DOWN until `MAIL_PASSWORD` is set: Spring's mail health check logs in to smtp.gmail.com
+  ("no password specified"). Expected; set it with `deploy/env-set.sh`.
+
+### Not done / next
+- Commit + PR `feat/prod-deploy` → `develop`, try on staging (`deploy/deploy.sh feat/prod-deploy` there adds
+  DEPLOY_ENV), release `develop` → `main`, then on prod: `git clone` into `/opt/softcrm`,
+  `S3_BACKUP_BUCKET=softcrm-prod-backups-2213 deploy/setup-env.sh prod`, owner types `MAIL_USERNAME`/`MAIL_PASSWORD`
+  with `deploy/env-set.sh`, `deploy/deploy.sh main`, cron `/etc/cron.d/softcrm-backup`, console sign-in (step 13).
+- Mail health DOWN would also show during a Gmail outage; nothing restarts on it (no Docker healthcheck on api).
+- Staging still runs as one superuser login (rebuild its database to get the roles; it holds test data only).
+
+## Session: PROD0 — tenant-data audit, staging vs prod, OCI prod plan (owner, 6 Nov)
+
+- Answered: as operator we can read every tenant's data (shared-schema SaaS); the code has no cross-tenant read path
+  (`@TenantId` fails closed, composite FKs, 4 audited `callAsSystem` uses, isolation tests for leads and staff).
+  Gaps found, ranked: no DPA with Western World; no erase/anonymise of a person (DPDP); app runs as DB superuser (PROD2);
+  no RLS (PROD4); backups unencrypted on the same server (PROD3); no privacy page/consent line (C5); data in Sydney
+  (disclose); student mail through `support@calrify.app`; Mailpit holds real mail if still used; no console TOTP (PA2);
+  no retention rule; `lead-sheet.sh` connects by slug with no confirmation; `CRM_TRUSTED_PROXY_SECRET` needed.
+- `crm.softzenithlabs.com` had no DNS record on 6 Nov; only `crm-staging[-api]` resolve (54.253.207.84).
+- OCI facts (Oracle docs, 6 Nov): A1 Always Free is now **1,500 OCPU-h + 9,000 GB-h/month = 2 OCPU + 12 GB per
+  tenancy** (halved 15 Jun 2026), 200 GB disk, home region only (owner's: `ap-mumbai-1`); idle reclaim if CPU p95,
+  network and memory all < 20 % for 7 days. Oracle's price page refused automated reads: costs use the last published
+  A1 list prices (US$0.01/OCPU-h, US$0.0015/GB-h); owner checks in the cost estimator.
+- Not checked: anything on the staging server.
+
+### OCI prod infrastructure created by Claude (owner's go-ahead, 6 Nov; nothing of Untiered changed)
+- OCI CLI 3.96 installed for the user (`%APPDATA%\Python\Python313\Scripts\oci.exe`), using `~/.oci/config`
+  (user `support@softzenithlabs.com`, group Administrators). Tenancy name is **`untiered1207`** (home region BOM).
+- Compartment **`softcrm-prod`** (root child), tags `project=softcrm, env=prod` on everything. Inside: VCN
+  `softcrm-prod-vcn` 10.20.0.0/16, `softcrm-prod-igw`, default route 0/0 → IGW, subnet `softcrm-prod-public`
+  10.20.0.0/24 with security list `softcrm-prod-public-sl` (22 from 106.219.123.98/32 only; 80, 443/tcp, 443/udp
+  from anywhere; ICMP 3/4), instance **`softcrm-prod`** `VM.Standard.A1.Flex` 1 OCPU / 6 GB, Ubuntu 24.04.5 aarch64,
+  boot 50 GB, reserved public IP **`softcrm-prod-ip` = 137.23.36.25**. Budget `softcrm-prod-budget` US$15/month on the
+  compartment, alerts to support@softzenithlabs.com at 50 % / 100 % actual and 100 % forecast. All OCIDs:
+  `~/.ssh/softcrm-prod-oci-ids.txt`.
+- SSH: `ssh -i ~/.ssh/softcrm-prod ubuntu@137.23.36.25` (ed25519 key made on the owner's machine; no passphrase;
+  owner keeps a copy in the password manager). Port 22 only from the owner's IP: if it changes, update the rule.
+- Server: packages upgraded, unattended-upgrades on, Docker 29.9.3 + Compose v5.7.0 (ubuntu in `docker` group),
+  Oracle's iptables opened for 80/443 tcp + 443 udp and saved (`netfilter-persistent`), 2 GB swap, `/opt/softcrm`
+  owned by ubuntu. Verified after a reboot: a test container on :80 answered from the internet.
+- **Cost found:** Untiered already runs 4 OCPU / 20 GB A1 (`untiered-api-prod` 2/12 since 27 Oct,
+  `untiered-piston-arm` 2/8 since 5 Nov), so the account is at 5 OCPU / 26 GB and SoftCRM gets no free A1. Under
+  Oracle's documented 2 + 12: SoftCRM adds ≈ US$13.87/month, and Untiered alone ≈ US$23/month (account ≈ US$37). If
+  Pay As You Go still gets 4 + 24 (support emails, unpublished): SoftCRM ≈ US$9.49, Untiered US$0. Disk 144 GB < 200
+  free. November passes 1,500 OCPU-hours around 16 Nov, so the first real charges (or none) show then.
+- **S3 backups (done by Claude, 7 Nov):** the AWS staging account is **427064006786**, a *member* account of the
+  owner's AWS Organization (management account 965825500247, root email support@softzenithlabs.com). An SCP
+  (`p-egfrejyf`) denies everything outside **Sydney** (Mumbai `CreateBucket` and global `ListAllMyBuckets` refused),
+  so the bucket is **`softcrm-prod-backups-2213` in ap-southeast-2**. The DPA must say backups are kept in Australia;
+  to move them to Mumbai, edit that SCP from the management account. Bucket: all public access blocked, versioning
+  on, SSE-S3, TLS-only bucket policy, lifecycle `expire-35-days` (current 35 d, noncurrent 7 d, incomplete uploads
+  2 d), tags `project=softcrm, env=prod`. IAM user `softcrm-prod-backup`, inline policy `softcrm-prod-backup-write`
+  (`s3:PutObject`, `s3:AbortMultipartUpload` on the bucket only). Its access key was piped straight to the prod
+  server (`~ubuntu/.aws/credentials`, profile `softcrm-backup`, mode 600) and never shown; a new one can be made any
+  time. Tested from the server with the `amazon/aws-cli` image: upload works; list, read and delete are refused;
+  test object removed. The owner's CLI login is IAM user `naman-cli` (AmazonS3FullAccess + IAMFullAccess, key in the
+  owner's `~/.aws`); delete it when no longer needed.
+- Staging SSH rule updated by the owner to 106.219.123.98/32 (7 Nov); SSH works again.
+- DNS done by the owner (7 Nov): `crm` and `crm-api` A → 137.23.36.25 (checked via dns.google). Oracle MFA was
+  already on (owner).
+- Not done: PROD1–3 code (PROD3 uses the bucket above), deploy. A separate Oracle account for SoftZenith would make SoftCRM fully unrelated and give it its own free
+  allowance (check Oracle's one-free-tier-per-customer rule); moving = rebuild the server, about 1 hour.
+
+## Session: MAIL2 — reply-to per business; go-live day (owner, 4 Nov)
 
 ### What I built
 - `TenantSettings.Notifications` gains `replyTo` (5th component, blank = none; the old 4-argument constructor stays).

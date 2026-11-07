@@ -1,5 +1,5 @@
-# SoftCRM on one server: database, API, staff app, test inbox, and Caddy (HTTPS) in front.
-# Settings and secrets come from deploy/.env (created by deploy/setup-env.sh, never committed).
+# SoftCRM on one server: database, API, staff app and Caddy (HTTPS) in front; on staging also a test inbox (Mailpit).
+# Settings and secrets come from deploy/.env (created by `deploy/setup-env.sh staging|prod`, never committed).
 # Start / update: deploy/deploy.sh. Operations: deploy/README.md.
 name: aimdesk
 
@@ -15,12 +15,27 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_DB: crm
-      POSTGRES_USER: ${DB_USER:-crm_app}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD missing in deploy/.env}
-    # Sized for a 2 GB server shared with the API and the staff app.
-    command: ["postgres", "-c", "shared_buffers=128MB", "-c", "max_connections=40"]
+      # Prod: a separate superuser that cannot log in over the network (db-init/10-roles.sh), a migration owner and a
+      # plain app login. Staging (older .env without DB_SUPERUSER): the app login is the superuser, as before.
+      POSTGRES_USER: ${DB_SUPERUSER:-${DB_USER:-crm_app}}
+      POSTGRES_PASSWORD: ${DB_SUPERUSER_PASSWORD:-${DB_PASSWORD:?DB_PASSWORD missing in deploy/.env}}
+      CRM_OWNER_USER: ${DB_MIGRATION_USER:-}
+      CRM_OWNER_PASSWORD: ${DB_MIGRATION_PASSWORD:-}
+      CRM_APP_USER: ${DB_USER:-crm_app}
+      CRM_APP_PASSWORD: ${DB_PASSWORD}
+    # Memory comes from deploy/.env: the defaults suit the 2 GB staging server, prod.env.example sizes it for 6 GB.
+    command:
+      - postgres
+      - -c
+      - shared_buffers=${PG_SHARED_BUFFERS:-128MB}
+      - -c
+      - effective_cache_size=${PG_EFFECTIVE_CACHE_SIZE:-4GB}
+      - -c
+      - max_connections=${PG_MAX_CONNECTIONS:-40}
     volumes:
       - pgdata:/var/lib/postgresql
+      # Runs only when the database is created for the first time (empty volume).
+      - ./db-init:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d crm"]
       interval: 5s
@@ -55,18 +70,27 @@ services:
       - api
     logging: *logging
 
-  # Test inbox: every email the API sends lands here (staging only; live uses real SMTP).
+  # Test inbox: every email the API sends lands here. Staging only (COMPOSE_PROFILES=staging in deploy/.env).
   mailpit:
     image: axllent/mailpit:latest
+    profiles: ["staging"]
     restart: unless-stopped
     environment:
-      MP_UI_AUTH: "softzenith:${MAILPIT_PASSWORD:?MAILPIT_PASSWORD missing in deploy/.env}"
+      MP_UI_AUTH: "softzenith:${MAILPIT_PASSWORD:-}"
       MP_MAX_MESSAGES: "2000"
     logging: *logging
 
   caddy:
     image: caddy:2-alpine
     restart: unless-stopped
+    # caddy/staging.Caddyfile or caddy/prod.Caddyfile, picked by DEPLOY_ENV in deploy/.env.
+    command:
+      - caddy
+      - run
+      - --config
+      - /etc/caddy/${DEPLOY_ENV:?DEPLOY_ENV (staging or prod) missing in deploy/.env}.Caddyfile
+      - --adapter
+      - caddyfile
     ports:
       - "80:80"
       - "443:443"
@@ -74,15 +98,14 @@ services:
     environment:
       CRM_DOMAIN: ${CRM_DOMAIN:?CRM_DOMAIN missing in deploy/.env}
       CRM_API_DOMAIN: ${CRM_API_DOMAIN:?CRM_API_DOMAIN missing in deploy/.env}
-      MAIL_DOMAIN: ${MAIL_DOMAIN:?MAIL_DOMAIN missing in deploy/.env}
+      MAIL_DOMAIN: ${MAIL_DOMAIN:-}
     volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./caddy:/etc/caddy:ro
       - caddy_data:/data
       - caddy_config:/config
     depends_on:
       - web
       - api
-      - mailpit
     logging: *logging
 
 volumes:

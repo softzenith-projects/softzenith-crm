@@ -69,14 +69,14 @@ Nginx inactive.
 | | What |
 |---|---|
 | C0 | Commit the finished, uncommitted work (sign-in codes, visitor address) on a branch, merge into `develop`, push. You approve first |
-| C1 | `deploy/` folder: Dockerfiles for the API (Java 21, heap capped so everything fits in 2 GB) and the staff app; `docker-compose.yml` with PostgreSQL, API, staff app, Caddy (automatic HTTPS) and Mailpit; `Caddyfile` for the three `crm-staging` addresses (password on the inbox); `staging.env.example`; nightly database dump kept 7 days; one-command deploy script. Pushed to `develop` |
+| C1 | `deploy/` folder: Dockerfiles for the API (Java 21, heap capped so everything fits in 2 GB) and the staff app; `docker-compose.yml` with PostgreSQL, API, staff app, Caddy (automatic HTTPS) and Mailpit; `Caddyfile` for the three `crm-staging` addresses (password on the inbox; since PROD1 `deploy/caddy/staging.Caddyfile`); `staging.env.example`; nightly database dump kept 7 days; one-command deploy script. Pushed to `develop` |
 
 ### 8. Install and start (Claude, 30–45 min; you approve each command)
 
 Everything is in the repo's `deploy/` folder (operations guide: `deploy/README.md`).
 
 1. Download the code to `/opt/aimdesk` (the repo is public, so no key is needed).
-2. `deploy/setup-env.sh` writes `/opt/aimdesk/deploy/.env` (readable only by the admin user) from
+2. `deploy/setup-env.sh staging` writes `/opt/aimdesk/deploy/.env` (readable only by the admin user) from
    `deploy/staging.env.example`. Secrets are generated **on the server**, so they never pass through chat:
 
    | Setting | Value |
