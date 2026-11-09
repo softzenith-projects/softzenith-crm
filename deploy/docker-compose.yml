@@ -50,6 +50,8 @@ services:
     env_file: .env
     environment:
       JAVA_TOOL_OPTIONS: ${API_JAVA_OPTS:--Xms256m -Xmx512m -XX:MaxMetaspaceSize=200m -XX:+UseSerialGC}
+      # Sentry tags each error with the deployed commit (deploy.sh sets it) and the environment.
+      SENTRY_RELEASE: ${SENTRY_RELEASE:-}
     depends_on:
       db:
         condition: service_healthy
@@ -62,6 +64,10 @@ services:
       context: ../frontend
       args:
         CRM_API_URL: http://api:8081
+        # Error tracking for the staff app (empty = off), baked in at build time.
+        NEXT_PUBLIC_SENTRY_DSN: ${SENTRY_WEB_DSN:-}
+        NEXT_PUBLIC_SENTRY_ENVIRONMENT: ${DEPLOY_ENV:-}
+        SENTRY_RELEASE: ${SENTRY_RELEASE:-}
     image: aimdesk-web
     restart: unless-stopped
     environment:

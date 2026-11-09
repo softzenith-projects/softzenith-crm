@@ -123,6 +123,21 @@ logging:
     root: info
     crm.access: info
 
+# Error tracking. Empty DSN (local, tests, staging unless set) = Sentry off. No personal data: no request headers,
+# cookies, IP or user; log lines are already masked (shared.logging.Mask). ERROR log lines become Sentry issues,
+# INFO and WARN lines ride along as breadcrumbs. Health checks are not traced.
+sentry:
+  dsn: ${SENTRY_API_DSN:}
+  environment: ${SENTRY_ENVIRONMENT:${DEPLOY_ENV:local}}
+  release: ${SENTRY_RELEASE:}
+  send-default-pii: false
+  traces-sample-rate: 0.1
+  ignored-transactions:
+    - GET /actuator/health
+  logging:
+    minimum-event-level: error
+    minimum-breadcrumb-level: info
+
 management:
   endpoints:
     web:

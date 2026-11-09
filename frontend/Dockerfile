@@ -8,7 +8,14 @@ RUN --mount=type=cache,target=/root/.npm npm ci --no-audit --no-fund
 COPY . .
 # Rewrites (/api/* → the API) are fixed at build time, so the API's address is a build argument.
 ARG CRM_API_URL=http://api:8081
+# Sentry (error tracking) is baked in at build time too; all empty = off.
+ARG NEXT_PUBLIC_SENTRY_DSN=
+ARG NEXT_PUBLIC_SENTRY_ENVIRONMENT=
+ARG SENTRY_RELEASE=
 ENV CRM_API_URL=$CRM_API_URL \
+    NEXT_PUBLIC_SENTRY_DSN=$NEXT_PUBLIC_SENTRY_DSN \
+    NEXT_PUBLIC_SENTRY_ENVIRONMENT=$NEXT_PUBLIC_SENTRY_ENVIRONMENT \
+    SENTRY_RELEASE=$SENTRY_RELEASE \
     NEXT_OUTPUT=standalone \
     NEXT_TELEMETRY_DISABLED=1
 RUN npm run build

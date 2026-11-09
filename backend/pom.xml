@@ -21,6 +21,7 @@
 		<fastexcel.version>0.19.0</fastexcel.version>
 		<commons-csv.version>1.14.1</commons-csv.version>
 		<bucket4j.version>8.20.0</bucket4j.version>
+		<sentry.version>8.63.0</sentry.version>
 		<greenmail.version>2.1.14</greenmail.version>
 		<zonky-embedded-database.version>2.8.0</zonky-embedded-database.version>
 		<zonky-embedded-postgres.version>2.2.2</zonky-embedded-postgres.version>
@@ -78,6 +79,17 @@
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-mail</artifactId>
+		</dependency>
+		<!-- Error tracking (Sentry): unhandled errors and ERROR log lines; off unless SENTRY_API_DSN is set. -->
+		<dependency>
+			<groupId>io.sentry</groupId>
+			<artifactId>sentry-spring-boot-4-starter</artifactId>
+			<version>${sentry.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>io.sentry</groupId>
+			<artifactId>sentry-logback</artifactId>
+			<version>${sentry.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
