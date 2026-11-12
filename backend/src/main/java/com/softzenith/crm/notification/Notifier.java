@@ -85,7 +85,7 @@ class Notifier {
                     Status.SENT, "smtp", mime.getMessageID(), null));
             log.info("Email {} sent to {} (lead {})", kind, Mask.email(to), leadId);
         } catch (Exception e) {
-            log.warn("Email {} to {} failed (lead {}): {}", kind, Mask.email(to), leadId, e.toString(), e);
+            logFailure(Channel.EMAIL, kind, Mask.email(to), leadId, e);
             logs.save(new NotificationLog(eventId, leadId, Channel.EMAIL, kind, to, message.subject(), message.body(),
                     Status.FAILED, "smtp", null, truncate(e.toString())));
         }
@@ -108,9 +108,22 @@ class Notifier {
                     result.status(), result.provider(), result.providerRef(), null));
             log.info("WhatsApp {} {} to {} via {} (lead {})", kind, result.status(), Mask.phone(toE164), result.provider(), leadId);
         } catch (Exception e) {
-            log.warn("WhatsApp {} to {} failed (lead {}): {}", kind, Mask.phone(toE164), leadId, e.toString(), e);
+            logFailure(Channel.WHATSAPP, kind, Mask.phone(toE164), leadId, e);
             logs.save(new NotificationLog(eventId, leadId, Channel.WHATSAPP, kind, toE164, null, message.body(),
                     Status.FAILED, whatsApp.getClass().getSimpleName(), null, truncate(e.toString())));
+        }
+    }
+
+    /**
+     * A staff alert that did not go out means a lead may sit unseen, so it is logged as an error (Sentry turns that
+     * into an emailed issue). A message to an enquirer can fail because the public typed a wrong address: a warning.
+     */
+    private void logFailure(Channel channel, Kind kind, String maskedRecipient, UUID leadId, Exception e) {
+        if (TO_ENQUIRER.contains(kind)) {
+            log.warn("{} {} to {} failed (lead {}): {}", channel, kind, maskedRecipient, leadId, e.toString(), e);
+        } else {
+            log.error("Staff alert not delivered: {} {} to {} failed (lead {}): {}", channel, kind, maskedRecipient,
+                    leadId, e.toString(), e);
         }
     }
 

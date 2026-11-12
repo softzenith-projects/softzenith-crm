@@ -9,7 +9,10 @@ import com.softzenith.crm.shared.tenant.TenantContext;
 import com.softzenith.crm.tenancy.Tenant;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.extension.RegisterExtension;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.support.TransactionTemplate;
 
@@ -19,6 +22,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @IntegrationTest
+@ExtendWith(OutputCaptureExtension.class)
 class NotifierTests {
 
     private static final Notifier.Sender ACME = new Notifier.Sender("Acme", null);
@@ -114,6 +118,23 @@ class NotifierTests {
         var row = rowsTo(phone).getFirst();
         assertThat(row.getStatus()).isEqualTo(NotificationLog.Status.FAILED);
         assertThat(row.getError()).contains("provider down");
+    }
+
+    @Test
+    void aStaffAlertThatFailsIsAnErrorButAFailedMessageToAnEnquirerIsOnlyAWarning(CapturedOutput output) {
+        WhatsAppSender broken = (toE164, text) -> {
+            throw new IllegalStateException("provider down");
+        };
+        var failing = new Notifier(templates, mailSender, broken, logs, "crm@acme.test", 5);
+        var enquirer = TestData.phone();
+        send(() -> failing.whatsApp(UUID.randomUUID(), null, NotificationLog.Kind.LEAD_WELCOME, enquirer, "lead-welcome-whatsapp", model));
+        assertThat(output.getAll()).containsPattern("WARN .*WHATSAPP LEAD_WELCOME to .* failed")
+                .doesNotContain("Staff alert not delivered");
+
+        var staff = TestData.phone();
+        send(() -> failing.whatsApp(UUID.randomUUID(), null, NotificationLog.Kind.NEW_LEAD_ALERT, staff, "lead-welcome-whatsapp", model));
+        assertThat(output.getAll()).containsPattern("ERROR .*Staff alert not delivered: WHATSAPP NEW_LEAD_ALERT");
+        assertThat(rowsTo(staff)).extracting(NotificationLog::getStatus).containsExactly(NotificationLog.Status.FAILED);
     }
 
     /** Every key the notification templates use. */
