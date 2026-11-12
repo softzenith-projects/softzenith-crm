@@ -484,11 +484,12 @@ flowchart TD
 <a id="flow-walkin"></a>
 ### Staff adding a walk-in or phone lead
 
-Same intake as the public form. The only differences: the tenant comes from the signed-in user, the source is chosen by staff, and created_by records who entered it.
+Same intake as the public form. The only differences: the tenant comes from the signed-in user, the source is chosen by staff, and created_by records who entered it. Picking Other (source, or an 'Other' entry in the business's service / country lists, here and on the public form) asks what is meant: the typed source goes to source_detail, a typed service or country is saved in place of 'Other'. Filler such as 'na' or 'aaaa' is refused in the browser.
 
 ```mermaid
 flowchart TD
   A(["Staff clicks + Add lead"]) --> B["Fills name, mobile, source<br/>WALK_IN / PHONE / REFERRAL / OTHER"]
+  B -. "Other picked" .-> B2["Types what it is<br/>(source → source_detail)"]
   B --> C["POST /api/v1/leads"]
   C --> D["Staff request checks<br/>see 'Every staff request'"]
   D --> E{"Has LEAD_CREATE?"}

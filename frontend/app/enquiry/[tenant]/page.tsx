@@ -8,11 +8,15 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
+import { ChoiceField } from "@/components/ChoiceField";
 import { ErrorText, Field } from "@/components/common";
 import { Turnstile } from "@/components/Turnstile";
 import { api, errorMessage, type Schemas } from "@/lib/api";
 
-/** Public enquiry form for any tenant: /enquiry/<tenant-slug>. Options come from the tenant's settings. */
+/**
+ * Public enquiry form for any tenant: /enquiry/<tenant-slug>. Options come from the tenant's settings; when they include
+ * "Other", picking it asks what is meant and the typed answer is sent instead.
+ */
 export default function EnquiryPage() {
   const { tenant } = useParams<{ tenant: string }>();
   const [form, setForm] = useState<Schemas["FormResponse"] | null>(null);
@@ -39,8 +43,8 @@ export default function EnquiryPage() {
         fullName: f.fullName,
         phone: f.phone,
         email: f.email || undefined,
-        serviceInterest: f.serviceInterest || undefined,
-        preferredCountry: f.preferredCountry || undefined,
+        serviceInterest: f.serviceInterest?.trim() || undefined,
+        preferredCountry: f.preferredCountry?.trim() || undefined,
         branchId: f.branchId || undefined,
         message: f.message || undefined,
         website: f.website || undefined,
@@ -60,17 +64,6 @@ export default function EnquiryPage() {
 
   if (loadError) return <main className="p-10 text-center"><ErrorText>{loadError}</ErrorText></main>;
   if (!form) return <main className="p-10 text-center text-sm text-muted-foreground">Loading…</main>;
-
-  const options = (values: string[] | undefined, name: string, label: string) => (
-    <Field label={label}>
-      {values && values.length > 0 ? (
-        <NativeSelect name={name} defaultValue="" className="w-full [&_select]:h-11">
-          <NativeSelectOption value="">Select…</NativeSelectOption>
-          {values.map((v) => <NativeSelectOption key={v}>{v}</NativeSelectOption>)}
-        </NativeSelect>
-      ) : <Input name={name} className="h-11" />}
-    </Field>
-  );
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-sidebar via-sidebar to-teal-900">
@@ -104,8 +97,10 @@ export default function EnquiryPage() {
                 <Field label="Full name *" className="sm:col-span-2"><Input name="fullName" required maxLength={200} className="h-11" autoComplete="name" /></Field>
                 <Field label="Mobile number *"><Input name="phone" type="tel" required placeholder="98765 43210" className="h-11" /></Field>
                 <Field label="Email"><Input name="email" type="email" className="h-11" /></Field>
-                {options(form.serviceInterests, "serviceInterest", "Interested in")}
-                {options(form.countries, "preferredCountry", "Preferred country")}
+                <ChoiceField name="serviceInterest" label="Interested in" otherLabel="Which service? *" values={form.serviceInterests}
+                             example="Spouse visa" maxLength={200} tall />
+                <ChoiceField name="preferredCountry" label="Preferred country" otherLabel="Which country? *" values={form.countries}
+                             example="Australia" maxLength={100} tall />
                 {form.branches && form.branches.length > 0 && (
                   <Field label="Nearest branch" className="sm:col-span-2">
                     <NativeSelect name="branchId" defaultValue="" className="w-full [&_select]:h-11">
