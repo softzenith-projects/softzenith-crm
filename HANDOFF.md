@@ -1,4 +1,4 @@
-# Handoff — 2026-11-09 (MON1: Sentry; prod live; earlier PROD1–3, PROD0, MAIL2; earlier IMPORT1, ADMIN1, GO0, AUTH1, TRUST1)
+# Handoff — 2026-11-12 (MON2: ops alerts; earlier MON1 Sentry, prod live; earlier PROD1–3, PROD0, MAIL2; earlier IMPORT1, ADMIN1, GO0, AUTH1, TRUST1)
 
 Project rules, stack, conventions and settled decisions: **`CLAUDE.md`**. This file is the current state.
 
@@ -76,10 +76,30 @@ spec: menu items appear only when their module exists (no fake counts).
 | PROD3 | `backup.sh` → S3 with a write-only key; tested restore | done (`restore-check.sh`); same branch |
 | PROD4 | Postgres RLS on every tenant table (was in T8), after PROD2 | todo |
 | MON1 | Error tracking + uptime (owner, 9 Nov): Sentry org `softzenith-softwares-private-l` (US region, shared with Untiered's projects), projects `softcrm-api` (Spring Boot 4 starter + logback: ERROR lines → issues) and `softcrm-web` (`@sentry/nextjs` 11, via `/monitoring` tunnel); nothing personal sent; uptime monitor on `crm-api…/actuator/health` | code on `feat/sentry`; deploy after release; DSNs go in prod `.env` |
+| MON2 | Ops alerts (owner, 12 Nov): Sentry cron monitor `softcrm-prod-backup` (backup.sh checks in; failed/missed run or disk ≥ `DISK_ALERT_PERCENT` emails), failed **staff** alerts logged at ERROR (→ Sentry), `shared.ops.StuckEventsCheck` every 15 min (ERROR when deliveries are unfinished after 30 min), OCI alarms memory > 90 % / CPU > 90 % → topic `softcrm-prod-alerts` (email support@) | code on `feat/ops-alerts`; OCI + Sentry parts live |
 | BRAND1 | Product name **SoftCRM** (placeholder, owner 3 Nov; replaces AimDesk of 9 Oct until a final name) in the UI (title, login, shell); Java package rename not planned. Lowercase `aimdesk` server names (`/opt/aimdesk`, compose project, cron, planned domains) unchanged | todo |
 | later | Applications, offers, visa cases, IELTS/PTE, payments, reports (PRD Phases 4–5) | todo |
 
-## Session (latest): MON1 — Sentry error tracking and uptime checks (owner, 9 Nov)
+## Session (latest): MON2 — backup, notification and server alerts (owner, 12 Nov)
+
+- OCI (by Claude, compartment `softcrm-prod`): Notifications topic `softcrm-prod-alerts`, EMAIL subscription to
+  support@softzenithlabs.com (**pending until the owner clicks Oracle's confirmation email**), alarms
+  "softcrm-prod memory above 90%" (CRITICAL, 15 min) and "softcrm-prod CPU above 90%" (WARNING, 30 min), repeat every
+  4 h. The compute agent has no disk-space metric, so disk is checked by backup.sh. Also updated the SSH rule on
+  `softcrm-prod-public-sl` to the owner's new IP 182.77.41.0/32 (12 Nov).
+- Sentry cron monitor `softcrm-prod-backup` (project softcrm-api, `30 21 * * *` UTC, margin 30 min, max 30 min,
+  connected to the "high priority issues" alert). `backup.sh` builds the check-in URL from `SENTRY_API_DSN` +
+  `SENTRY_BACKUP_MONITOR`, sends in_progress / ok / error (ERR trap), and fails when `/` ≥ `DISK_ALERT_PERCENT`
+  (85). Prod `.env` already has both lines; the new script was run once from a temp copy on prod: ok check-in seen.
+- Code: `Notifier.logFailure` (staff alerts ERROR, enquirer messages WARN); `shared.ops.StuckEventsCheck` +
+  `shared.config.SchedulingConfig` (`@EnableScheduling`; `crm.ops.stuck-events.check-every` / `older-than`). Tests:
+  `NotifierTests` (new case), `StuckEventsCheckTests`. `./mvnw verify` passes.
+- Until email is set up, every new lead's staff alert fails, so Sentry will hold one grouped issue "Staff alert not
+  delivered" (expected; it stops once SMTP works).
+- Until this branch is released and deployed, the nightly cron runs the old backup.sh (no check-in): Sentry would
+  mark tonight's run as missed.
+
+## Session: MON1 — Sentry error tracking and uptime checks (owner, 9 Nov)
 
 - Prod went live 9 Nov (deployed from `main` 39725b6; Western World onboarded, 357 staging leads copied with
   history and numbers, counter 357; Admin's staging sign-in code hash copied on the owner's go-ahead; Vercel and
