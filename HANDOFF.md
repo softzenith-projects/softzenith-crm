@@ -1,4 +1,4 @@
-# Handoff — 2026-11-12 (MON2: ops alerts; earlier MON1 Sentry, prod live; earlier PROD1–3, PROD0, MAIL2; earlier IMPORT1, ADMIN1, GO0, AUTH1, TRUST1)
+# Handoff — 2026-11-12 (MON2: ops alerts; OTHER1 "Other" option; earlier MON1 Sentry, prod live; earlier PROD1–3, PROD0, MAIL2; earlier IMPORT1, ADMIN1, GO0, AUTH1, TRUST1)
 
 Project rules, stack, conventions and settled decisions: **`CLAUDE.md`**. This file is the current state.
 
@@ -77,6 +77,7 @@ spec: menu items appear only when their module exists (no fake counts).
 | PROD4 | Postgres RLS on every tenant table (was in T8), after PROD2 | todo |
 | MON1 | Error tracking + uptime (owner, 9 Nov): Sentry org `softzenith-softwares-private-l` (US region, shared with Untiered's projects), projects `softcrm-api` (Spring Boot 4 starter + logback: ERROR lines → issues) and `softcrm-web` (`@sentry/nextjs` 11, via `/monitoring` tunnel); nothing personal sent; uptime monitor on `crm-api…/actuator/health` | code on `feat/sentry`; deploy after release; DSNs go in prod `.env` |
 | MON2 | Ops alerts (owner, 12 Nov): Sentry cron monitor `softcrm-prod-backup` (backup.sh checks in; failed/missed run or disk ≥ `DISK_ALERT_PERCENT` emails), failed **staff** alerts logged at ERROR (→ Sentry), `shared.ops.StuckEventsCheck` every 15 min (ERROR when deliveries are unfinished after 30 min), OCI alarms memory > 90 % / CPU > 90 % → topic `softcrm-prod-alerts` (email support@) | code on `feat/ops-alerts`; OCI + Sentry parts live |
+| OTHER1 | "Other" asks what is meant (owner, 6 Nov): picking Other (staff source, or an "Other" entry in a business's service / country lists, staff dialog and public form) shows a box; typed source → source_detail, typed service / country saved in place of "Other". Frontend only | done; branch `feat/other-option`, PR into develop |
 | BRAND1 | Product name **SoftCRM** (placeholder, owner 3 Nov; replaces AimDesk of 9 Oct until a final name) in the UI (title, login, shell); Java package rename not planned. Lowercase `aimdesk` server names (`/opt/aimdesk`, compose project, cron, planned domains) unchanged | todo |
 | later | Applications, offers, visa cases, IELTS/PTE, payments, reports (PRD Phases 4–5) | todo |
 
@@ -228,6 +229,39 @@ OTHER1 work on `feat/other-option` is untouched. Not committed (commit when the 
 - Not done: PROD1–3 code (PROD3 uses the bucket above), deploy. A separate Oracle account for SoftZenith would make SoftCRM fully unrelated and give it its own free
   allowance (check Oracle's one-free-tier-per-customer rule); moving = rebuild the server, about 1 hour.
 
+## Session: OTHER1 — "Other" asks what is meant (owner, 6 Nov)
+
+### What I built
+- `frontend/components/ChoiceField.tsx`: a business option list that, when the business lists "Other" (any case,
+  "Others" too), shows a box to type the actual value; the typed text is sent in place of "Other". `otherProblem`
+  refuses filler ("na", "other", "aaaa", mostly digits) through the browser's own validation. Used by `LeadForm`
+  (Add a lead) and the public `/enquiry/[tenant]` page.
+- `LeadForm`: source "Other" asks "Which source?" → `sourceDetail` (the API already accepted it). A saved form is
+  re-mounted (fresh lists, "Other" boxes gone). Sources unchanged (Walk in, Phone, Referral, Other).
+- Tests: `ChoiceField.test.ts`; new cases in `LeadForm.test.tsx` and `enquiry/[tenant]/page.test.tsx`.
+  `docs/generate_flows.py` + `flows.md` (walk-in flow mentions the box).
+
+### Assumptions I made
+- "Other" is detected by the option's text, so a business gets the box by adding "Other" to its lists (data, no code).
+- The enquirer's welcome message still repeats only values from the business's own lists, so a typed value is saved
+  and shown to staff but not echoed to the student (existing safety rule, unchanged).
+- A first pass also added Seminar / Facebook / Instagram / Google sources (V11) and renamed source labels; the owner
+  wanted only the "Other" change, so those were reverted (code, and the local dev database's V11 undone by hand). V11 was
+  never deployed.
+
+### What I could NOT verify
+- `npm run e2e`: port 3000 on the dev machine serves another project ("Untiered"), so Playwright reused it and every
+  journey failed at sign-in. Re-run with the CRM UI on :3000.
+  Tried again 12 Nov after rebasing on `develop`: the local Postgres would not start cleanly from Claude's background
+  shell (Windows 0xC0000142 / shared memory 487), so e2e is still not run. Owner: `.\dev`, then `npm run e2e`.
+
+### Verification status
+- Frontend: `tsc` ok, lint 0 errors (2 old warnings), `npm test` 128/128, `npm run build` ok. Backend: no changes. Re-run on 12 Nov
+  after rebasing on `develop`: same results.
+
+### Git status
+- Committed on `feat/other-option` (rebased on `origin/develop` 12 Nov); PR into `develop`.
+
 ## Session: MAIL2 — reply-to per business; go-live day (owner, 4 Nov)
 
 ### What I built
@@ -249,9 +283,10 @@ OTHER1 work on `feat/other-option` is untouched. Not committed (commit when the 
   onboarding, website, test, import, safety).
 - Email: Google Workspace SMTP for today (owner's account `support@calrify.app`, primary domain `calrify.app`;
   `softzenithlabs.com` is a second domain). DNS checked: MX Google, DKIM authenticating (owner confirmed in the admin
-  console), DMARC `p=none`, SPF `v=spf1 include:_spf.google.com ~all` added today. SES records already exist for a
-  custom MAIL FROM `send.softzenithlabs.com` in **ap-northeast-1 (Tokyo)**; SES production access status unknown.
-  SES later (MAIL1) is only a `.env` change.
+  console), DMARC `p=none`, SPF `v=spf1 include:_spf.google.com ~all` added today. The SES records for a
+  custom MAIL FROM `send.softzenithlabs.com` in **ap-northeast-1 (Tokyo)** belong to the owner's **other project
+  (Untiered), not SoftCRM** (owner, 6 Nov): SoftCRM has no SES yet. MAIL1 = a new SES set-up for SoftCRM (own region,
+  own MAIL FROM subdomain, not `send.`); after that, switching to it is only a `.env` change.
 - Not tried yet: Gmail SMTP needs `SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH=true` and `..._STARTTLS_ENABLE=true` in
   `deploy/.env` (Spring maps them to `spring.mail.properties.*`); check with the first real email.
 - Without `CRM_TRUSTED_PROXY_SECRET` every Vercel-forwarded enquiry shares one address and hits the 30/hour per-IP

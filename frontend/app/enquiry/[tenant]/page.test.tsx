@@ -47,6 +47,20 @@ describe("Public enquiry page", () => {
     expect(screen.getByRole("button", { name: "Submit enquiry" })).toBeEnabled();
   });
 
+  it("asks what 'Other' means and sends the typed country", async () => {
+    routes({ [FORM]: () => json({ ...form, countries: ["Canada", "Other"] }), [SUBMIT]: () => json({ reference: "LD-1", message: "Thanks" }, 201) });
+    render(<EnquiryPage />);
+
+    await userEvent.type(await screen.findByRole("textbox", { name: /full name/i }), "Riya Sharma");
+    await userEvent.type(screen.getByRole("textbox", { name: /mobile number/i }), "9876543210");
+    await userEvent.selectOptions(screen.getByRole("combobox", { name: /preferred country/i }), "Other");
+    await userEvent.type(screen.getByRole("textbox", { name: /which country/i }), "  Australia ");
+    await userEvent.click(screen.getByRole("button", { name: "Submit enquiry" }));
+
+    await screen.findByRole("heading", { name: "Thanks" });
+    expect(requests.find((r) => r.method === "POST")!.body).toMatchObject({ preferredCountry: "Australia" });
+  });
+
   it("shows an error for an unknown organisation", async () => {
     routes({ [FORM]: () => json({ detail: "Tenant westernworld not found" }, 404) });
     render(<EnquiryPage />);
