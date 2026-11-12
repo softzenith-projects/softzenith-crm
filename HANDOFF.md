@@ -1,4 +1,4 @@
-# Handoff — 2026-11-07 (PROD1–3: prod packaging, database roles, S3 backups; earlier PROD0, MAIL2; earlier IMPORT1, ADMIN1, GO0, AUTH1, TRUST1)
+# Handoff — 2026-11-09 (MON1: Sentry; prod live; earlier PROD1–3, PROD0, MAIL2; earlier IMPORT1, ADMIN1, GO0, AUTH1, TRUST1)
 
 Project rules, stack, conventions and settled decisions: **`CLAUDE.md`**. This file is the current state.
 
@@ -75,10 +75,35 @@ spec: menu items appear only when their module exists (no fake counts).
 | PROD2 | Database roles: migration owner + non-superuser `crm_app` (today `crm_app` is the image's superuser) | done for new databases (prod); staging keeps one role until rebuilt; same branch |
 | PROD3 | `backup.sh` → S3 with a write-only key; tested restore | done (`restore-check.sh`); same branch |
 | PROD4 | Postgres RLS on every tenant table (was in T8), after PROD2 | todo |
+| MON1 | Error tracking + uptime (owner, 9 Nov): Sentry org `softzenith-softwares-private-l` (US region, shared with Untiered's projects), projects `softcrm-api` (Spring Boot 4 starter + logback: ERROR lines → issues) and `softcrm-web` (`@sentry/nextjs` 11, via `/monitoring` tunnel); nothing personal sent; uptime monitor on `crm-api…/actuator/health` | code on `feat/sentry`; deploy after release; DSNs go in prod `.env` |
 | BRAND1 | Product name **SoftCRM** (placeholder, owner 3 Nov; replaces AimDesk of 9 Oct until a final name) in the UI (title, login, shell); Java package rename not planned. Lowercase `aimdesk` server names (`/opt/aimdesk`, compose project, cron, planned domains) unchanged | todo |
 | later | Applications, offers, visa cases, IELTS/PTE, payments, reports (PRD Phases 4–5) | todo |
 
-## Session (latest): PROD1–3 — prod packaging, database roles, backups to S3 (owner, 7 Nov)
+## Session (latest): MON1 — Sentry error tracking and uptime checks (owner, 9 Nov)
+
+- Prod went live 9 Nov (deployed from `main` 39725b6; Western World onboarded, 357 staging leads copied with
+  history and numbers, counter 357; Admin's staging sign-in code hash copied on the owner's go-ahead; Vercel and
+  `westernworldvisaservices.com` moved: DNS now at Namecheap BasicDNS, MX → `mail.` on the old cPanel server
+  159.89.161.124, `@`/`www` → Vercel). `MANAGEMENT_HEALTH_MAIL_ENABLED=false` in prod `.env` until email is set up.
+- Sentry projects created by Claude (owner chose the existing org): `softcrm-api`, `softcrm-web`, each with the
+  default "high priority issues" email alert. Uptime monitors: API health every 60 s (down after 3 failures)
+  **active**; staff login page every 5 min created but **disabled** by Sentry (plan limit, probably).
+- Backend: `io.sentry:sentry-spring-boot-4-starter` + `sentry-logback` 8.63.0; `application.yml` `sentry.*`
+  (DSN `SENTRY_API_DSN`, environment `SENTRY_ENVIRONMENT` → `DEPLOY_ENV`, release `SENTRY_RELEASE`,
+  `send-default-pii: false`, traces 10 %, health not traced). Unhandled errors are logged at ERROR by
+  `GlobalExceptionHandler`, which the logback appender turns into issues.
+- Frontend: `@sentry/nextjs` 11.11 (v11: `withSentryConfig` comes from `@sentry/nextjs/config`, and `dataCollection`
+  defaults are permissive, so `sentry.privacy.ts` switches every category off). No replay, no local variables.
+  DSN/env/release are build args (`NEXT_PUBLIC_SENTRY_DSN` ← `SENTRY_WEB_DSN`). Source maps not uploaded (no
+  `SENTRY_AUTH_TOKEN`; the repo is public anyway, so frames can be read against the source).
+- Verified: `./mvnw verify` passes; `LoggingTests` run with the DSN set produced SOFTCRM-API-1 (environment
+  `verification`, release `softcrm@verify`, request id in MDC), then resolved. Frontend: tsc, lint, 122 Vitest
+  tests and a standalone build with the DSN pass (DSN in the client bundle, `/monitoring` route present).
+- Owner to do: Sentry → each project → Settings → Security & Privacy → **Prevent Storing of IP Addresses** on.
+- Next: commit + PR `feat/sentry` → develop → release; on prod add `SENTRY_API_DSN`/`SENTRY_WEB_DSN` to `.env`,
+  `deploy/deploy.sh main`, then check an event arrives with environment `prod`.
+
+## Session: PROD1–3 — prod packaging, database roles, backups to S3 (owner, 7 Nov)
 
 Branch `feat/prod-deploy` from `develop` (7c64c53), in a separate worktree `../CRM-prod`, so the owner's uncommitted
 OTHER1 work on `feat/other-option` is untouched. Not committed (commit when the owner asks).
