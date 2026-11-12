@@ -33,6 +33,8 @@ git checkout "$branch"
 git pull --ff-only origin "$branch"
 
 cd deploy
+# Sentry ties each error to the commit that is running.
+export SENTRY_RELEASE="softcrm@$(git rev-parse --short HEAD)"
 # One image at a time: a small server runs out of memory building both together.
 docker compose build api
 docker compose build web

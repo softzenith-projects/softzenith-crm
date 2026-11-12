@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { withSentryConfig } from "@sentry/nextjs/config";
 
 // The browser only talks to this Next.js app; /api/* is proxied to the Spring Boot backend (no CORS needed).
 const apiUrl = process.env.CRM_API_URL ?? "http://localhost:8081";
@@ -41,4 +42,15 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+// Sentry: errors reach it through this app's own /monitoring route (so the CSP above stays 'self' and ad blockers
+// do not drop them). Source maps are uploaded only when SENTRY_AUTH_TOKEN is set at build time.
+export default withSentryConfig(nextConfig, {
+  org: "softzenith-softwares-private-l",
+  project: "softcrm-web",
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+  release: process.env.SENTRY_RELEASE ? { name: process.env.SENTRY_RELEASE } : undefined,
+  widenClientFileUpload: true,
+  tunnelRoute: "/monitoring",
+  silent: !process.env.CI,
+  telemetry: false,
+});
